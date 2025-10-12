@@ -264,30 +264,22 @@ class Api:
 
 # --- 5. PyWebView Application Bootstrap ---
 
-# The HTML file content (assuming you put the HTML/JS from the previous step here)
-html_content = """
-<!DOCTYPE html>
-<html>
-<head>
-    <title>SWORD to FlexText Converter</title>
-    </head>
-<body>
-    <script>
-        // Placeholder for the JavaScript functions (addRow, removeRow, loadVerseData, generateFile)
-        // ... (The JS code from Step 7 Revised must be here) ...
-    </script>
-</body>
-</html>
-"""
-
 def start_app():
     # Instantiate the API class
     api = Api()
     
+    # Check if we are running as a bundled executable (PyInstaller)
+    if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+        # In a bundled app, HTML/JS is extracted to _MEIPASS
+        html_path = os.path.join(sys._MEIPASS, 'index.html')
+    else:
+        # Running from interpreter, HTML is in the same directory
+        html_path = 'index.html'
+
     # Create the webview window
     webview.create_window(
         'SWORD to FlexText Interlinear Generator', 
-        html=html_content, 
+        url=html_path, # <-- Use 'url' to point to the index.html file
         js_api=api,
         width=850, 
         height=950,
@@ -298,6 +290,7 @@ def start_app():
     webview.start()
 
 if __name__ == '__main__':
-    # NOTE: In a real deployment, you would ensure the HTML/JS is correctly 
-    # bundled and referenced. For this script, we're using an inline placeholder.
+    # Import sys and os at the top of app.py for this logic to work
+    import sys 
+    import os
     start_app()
