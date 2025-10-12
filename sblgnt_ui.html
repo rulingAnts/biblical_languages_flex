@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>SWORD to FlexText Converter (AGPLv3)</title>
+    <style>
+        /* General Styles for a clean, professional app look */
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 850px; 
+            margin: 0 auto; 
+            padding: 20px; 
+            background-color: #f7f7f7;
+        }
+        h2 { color: #007BFF; border-bottom: 2px solid #ccc; padding-bottom: 5px; }
+        .config-box { 
+            background-color: #ffffff;
+            border: 1px solid #ddd; 
+            padding: 15px; 
+            margin-bottom: 20px; 
+            border-radius: 6px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .data-map-row { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr auto; /* Data field | WS ID | Remove button */
+            gap: 10px; 
+            align-items: center; 
+            margin-top: 5px; 
+            padding: 5px;
+            border-bottom: 1px dotted #eee;
+        }
+        .data-map-row:last-child { border-bottom: none; }
+
+        input[type="text"], select { 
+            padding: 8px; 
+            border: 1px solid #ccc; 
+            border-radius: 3px; 
+            width: 100%;
+        }
+        button {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        button:hover { opacity: 0.9; }
+        .primary-btn { background-color: #28a745; color: white; }
+        .remove-btn { background-color: #dc3545; color: white; padding: 5px 10px; }
+
+        #interlinear-display { 
+            border: 1px solid #007BFF; 
+            padding: 15px; 
+            margin-top: 15px; 
+            background-color: #f0f8ff;
+            border-radius: 4px;
+            font-family: monospace; 
+            white-space: pre-wrap;
+            font-size: 14px;
+        }
+        hr { border: 0; border-top: 1px solid #eee; margin: 15px 0; }
+        
+        .verse-lookup-group { display: flex; gap: 10px; align-items: center; }
+    </style>
+</head>
+<body>
+
+    <h2>📖 SWORD to FlexText Interlinear Generator</h2>
+
+    <div class="config-box">
+        <h3>1. Data Retrieval</h3>
+        <div class="verse-lookup-group">
+            <label for="verse-input">Enter Verse (e.g., John 1:1):</label>
+            <input type="text" id="verse-input" value="John 1:1" required style="flex-grow: 1;">
+            <button onclick="loadVerseData()" style="background-color: #007BFF; color: white;">Load Data</button>
+        </div>
+        <div id="interlinear-display">
+            <p>Awaiting verse data...</p>
+        </div>
+    </div>
+
+    <div class="config-box">
+        <h3>2. FLEx Writing System Mapping</h3>
+        <p style="font-size: 0.9em; color: #555;">Map the extracted data fields to the required FLEx interlinear layers. Ensure Writing System (WS) IDs are unique!</p>
+        
+        <h4>Word-Level: Baseline Text (type="txt", lang="grc")</h4>
+        <label for="baseline-map">Data Field for Baseline:</label>
+        <select id="baseline-map">
+            <option value="greek_word" selected>Greek Word (Accented Text)</option>
+            <option value="tr_transliteration">Transliteration (Roman Script)</option>
+            <option value="lemma">Lemma (Lexical Form)</option>
+            <option value="strongs_number">Strong's Number</option>
+        </select>
+        
+        <hr>
+        
+        <h4>Word-Level: Word Gloss (type="gls", lang="en")</h4>
+        <label for="word-gloss-map">Data Field for Word Gloss:</label>
+        <select id="word-gloss-map">
+            <option value="en_gloss" selected>English Gloss (Dictionary Definition)</option>
+            <option value="lemma">Lemma (Lexical Form)</option>
+            <option value="strongs_number">Strong's Number</option>
+        </select>
+        
+        <hr>
+        
+        <h4>Phrase-Level: Translation Lines</h4>
+        <input type="checkbox" id="include-literal" checked> 
+        <label for="include-literal">Include Literal Translation (type="lit", lang="en")</label>
+        <br><small style="margin-left: 20px;">*Free Translation (type="gls") is always included.</small>
+
+        <hr>
+        
+        <h4>Word-Level: Analysis Layers (type="msa")</h4>
+        <p style="font-size: 0.9em; margin-top: 5px;">Map multiple interlinear fields to custom **Morpheme Analysis** writing systems.</p>
+
+        <template id="analysis-row-template">
+            <div class="data-map-row">
+                <select class="analysis-data-key" required>
+                    <option value="" disabled selected>Select Data Field</option>
+                    <option value="morphology">Morphology Tag</option>
+                    <option value="strongs_number">Strong's Number</option>
+                    <option value="lemma">Lemma</option>
+                    <option value="tr_transliteration">Transliteration</option>
+                    <option value="greek_word">Greek Word</option>
+                </select>
+                <input type="text" class="analysis-ws-id" placeholder="Enter FLEx WS ID (e.g., grc-morph)" required>
+                <button class="remove-btn" onclick="removeRow(this)">Remove</button>
+            </div>
+        </template>
+        
+        <div id="analysis-container">
+            <div class="data-map-row">
+                <select class="analysis-data-key" required>
+                    <option value="morphology" selected>Morphology Tag</option>
+                </select>
+                <input type="text" class="analysis-ws-id" value="grc-morph" required>
+                <button class="remove-btn" onclick="removeRow(this)">Remove</button>
+            </div>
+            <div class="data-map-row">
+                <select class="analysis-data-key" required>
+                    <option value="strongs_number" selected>Strong's Number</option>
+                </select>
+                <input type="text" class="analysis-ws-id" value="grc-strongs" required>
+                <button class="remove-btn" onclick="removeRow(this)">Remove</button>
+            </div>
+        </div>
+        
+        <button onclick="addRow()" style="background-color: #6c757d; color: white; margin-top: 10px;">+ Add Analysis Layer</button>
+    </div>
+
+    <button class="primary-btn" onclick="generateFile()" style="width: 100%; font-size: 1.2em;">
+        📥 Generate and Save .flextext File
+    </button>
+
+    <p id="status-message" style="color: #007BFF; margin-top: 15px; font-weight: bold;"></p>
+
+    <script>
+        let currentVerseData = null;
+
+        // --- Utility Functions ---
+        function addRow() {
+            const template = document.getElementById('analysis-row-template');
+            const clone = template.content.cloneNode(true);
+            document.getElementById('analysis-container').appendChild(clone);
+        }
+
+        function removeRow(buttonElement) {
+            buttonElement.parentNode.remove();
+        }
+
+        // --- Data Retrieval ---
+        async function loadVerseData() {
+            const verseRef = document.getElementById('verse-input').value.trim();
+            document.getElementById('status-message').textContent = 'Loading SWORD data...';
+
+            try {
+                // Split the reference (e.g., "John 1:1" -> ["John", "1", "1"])
+                const parts = verseRef.match(/([a-zA-Z]+)\s*(\d+):(\d+)/);
+                if (!parts) throw new Error("Invalid verse format. Use 'Book Chapter:Verse'.");
+
+                const book = parts[1];
+                const chapter = parts[2];
+                const verse = parts[3];
+
+                // Call Python API function
+                const data = await pywebview.api.get_interlinear_data_for_json(book, chapter, verse);
+
+                if (data.error) {
+                    document.getElementById('status-message').style.color = '#dc3545';
+                    document.getElementById('status-message').textContent = `Error: ${data.error}`;
+                    currentVerseData = null;
+                    return;
+                }
+
+                currentVerseData = data;
+                displayDataPreview(data);
+                document.getElementById('status-message').style.color = '#28a745';
+                document.getElementById('status-message').textContent = `Data loaded for ${data.verse_ref}. Ready for generation.`;
+
+            } catch (e) {
+                document.getElementById('status-message').style.color = '#dc3545';
+                document.getElementById('status-message').textContent = `Error: ${e.message}`;
+                currentVerseData = null;
+            }
+        }
+        
+        // --- Display Preview ---
+        function displayDataPreview(data) {
+            const display = document.getElementById('interlinear-display');
+            let html = `<strong>Reference:</strong> ${data.verse_ref}<br>`;
+            html += `<strong>Free Translation:</strong> ${data.free_translation}<br>`;
+            html += `<strong>Words Preview (Gk, Strong's, Gloss):</strong><br>`;
+            
+            data.words.slice(0, 7).forEach(word => {
+                html += `&nbsp;&nbsp;&nbsp;${word.greek_word} (${word.strongs_number}) - ${word.en_gloss} <br>`;
+            });
+            
+            html += '<br>... (Full word data loaded for generation)';
+            display.innerHTML = html;
+        }
+
+
+        // --- File Generation ---
+        async function generateFile() {
+            if (!currentVerseData) {
+                document.getElementById('status-message').style.color = '#dc3545';
+                document.getElementById('status-message').textContent = 'Please load verse data first.';
+                return;
+            }
+
+            // 1. Build the Configuration Map from the UI inputs
+            const configMap = {
+                'baseline_data_key': document.getElementById('baseline-map').value,
+                'word_gloss_data_key': document.getElementById('word-gloss-map').value,
+                'include_literal': document.getElementById('include-literal').checked,
+                'analysis_map': {}
+            };
+
+            // Iterate over all dynamic analysis rows
+            const rows = document.getElementById('analysis-container').children;
+            for (const row of rows) {
+                const dataKeySelect = row.querySelector('.analysis-data-key');
+                const wsIdInput = row.querySelector('.analysis-ws-id');
+                
+                if (dataKeySelect && wsIdInput) {
+                    const dataKey = dataKeySelect.value;
+                    const wsId = wsIdInput.value.trim();
+                    
+                    if (dataKey && wsId) {
+                        // Check for duplicate WS IDs (optional but helpful guardrail)
+                        if (Object.values(configMap.analysis_map).includes(wsId)) {
+                            document.getElementById('status-message').style.color = '#dc3545';
+                            document.getElementById('status-message').textContent = `Error: Duplicate Writing System ID '${wsId}' detected. Please use unique IDs.`;
+                            return;
+                        }
+                        configMap.analysis_map[dataKey] = wsId;
+                    }
+                }
+            }
+            
+            document.getElementById('status-message').style.color = '#007BFF';
+            document.getElementById('status-message').textContent = 'Generating FlexText XML... Please select a save location.';
+
+            // 2. Call the Final Python Generation Function
+            try {
+                // We send the configuration map AND the entire verse data object back to Python
+                const result = await pywebview.api.generate_flextext(
+                    currentVerseData.verse_ref, 
+                    configMap,
+                    currentVerseData 
+                );
+
+                // Update status message based on result from Python
+                if (result.startsWith('✅')) {
+                     document.getElementById('status-message').style.color = '#28a745';
+                } else if (result.startsWith('❌')) {
+                     document.getElementById('status-message').style.color = '#dc3545';
+                }
+                document.getElementById('status-message').textContent = result;
+                
+            } catch (e) {
+                document.getElementById('status-message').style.color = '#dc3545';
+                document.getElementById('status-message').textContent = `FATAL JS ERROR during generation: ${e.message}`;
+            }
+        }
+
+        // --- Initialization ---
+        window.addEventListener('pywebviewready', () => {
+            // Load a default verse when the app starts
+            loadVerseData(); 
+        });
+    </script>
+
+</body>
+</html>
