@@ -1,0 +1,2 @@
+pywebview>=4.0,<5.0
+pysword==0.2.8

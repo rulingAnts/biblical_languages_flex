@@ -71,8 +71,8 @@
     <div class="config-box">
         <h3>1. Data Retrieval</h3>
         <div class="verse-lookup-group">
-            <label for="verse-input">Enter Verse (e.g., John 1:1):</label>
-            <input type="text" id="verse-input" value="John 1:1" required style="flex-grow: 1;">
+            <label for="verse-input">Enter Reference (e.g., John 1:1 or John 1:1-5:14):</label>
+            <input type="text" id="verse-input" value="John 1:1-1:3" required style="flex-grow: 1;">
             <button onclick="loadVerseData()" style="background-color: #007BFF; color: white;">Load Data</button>
         </div>
         <div id="interlinear-display">
@@ -157,7 +157,8 @@
     <p id="status-message" style="color: #007BFF; margin-top: 15px; font-weight: bold;"></p>
 
     <script>
-        let currentVerseData = null;
+    let currentVerseData = null; // For single verse (legacy)
+    let currentPassageData = null; // For ranges
 
         // --- Utility Functions ---
         function addRow() {
@@ -176,25 +177,30 @@
             document.getElementById('status-message').textContent = 'Loading SWORD data...';
 
             try {
-                // Split the reference (e.g., "John 1:1" -> ["John", "1", "1"])
-                const parts = verseRef.match(/([a-zA-Z]+)\s*(\d+):(\d+)/);
-                if (!parts) throw new Error("Invalid verse format. Use 'Book Chapter:Verse'.");
-
-                const book = parts[1];
-                const chapter = parts[2];
-                const verse = parts[3];
-
-                // Call Python API function
-                const data = await pywebview.api.get_interlinear_data_for_json(book, chapter, verse);
+                // Use the more flexible API that accepts single-verse or range references
+                const data = await pywebview.api.get_interlinear_data_for_reference(verseRef);
 
                 if (data.error) {
                     document.getElementById('status-message').style.color = '#dc3545';
                     document.getElementById('status-message').textContent = `Error: ${data.error}`;
                     currentVerseData = null;
+                    currentPassageData = null;
                     return;
                 }
 
+                // If we receive a passage response
+                if (data.verses) {
+                    currentPassageData = data;
+                    currentVerseData = null; // clear legacy slot
+                    displayPassagePreview(data);
+                    document.getElementById('status-message').style.color = '#28a745';
+                    document.getElementById('status-message').textContent = `Data loaded for ${data.passage_ref} (${data.verses.length} verses). Ready for generation.`;
+                    return;
+                }
+
+                // Legacy single-verse fallback
                 currentVerseData = data;
+                currentPassageData = null;
                 displayDataPreview(data);
                 document.getElementById('status-message').style.color = '#28a745';
                 document.getElementById('status-message').textContent = `Data loaded for ${data.verse_ref}. Ready for generation.`;
@@ -203,6 +209,7 @@
                 document.getElementById('status-message').style.color = '#dc3545';
                 document.getElementById('status-message').textContent = `Error: ${e.message}`;
                 currentVerseData = null;
+                currentPassageData = null;
             }
         }
         
@@ -221,10 +228,24 @@
             display.innerHTML = html;
         }
 
+        function displayPassagePreview(data) {
+            const display = document.getElementById('interlinear-display');
+            let html = `<strong>Reference:</strong> ${data.passage_ref}<br>`;
+            html += `<strong>Verses Loaded:</strong> ${data.verses.length}<br>`;
+            html += `<strong>Preview (first 3 verses, 5 words each):</strong><br>`;
+            data.verses.slice(0,3).forEach(v => {
+                html += `<em>${v.verse_ref}</em><br>`;
+                v.words.slice(0,5).forEach(w => {
+                    html += `&nbsp;&nbsp;&nbsp;${w.greek_word} (${w.strongs_number}) - ${w.en_gloss} <br>`;
+                });
+            });
+            display.innerHTML = html;
+        }
+
 
         // --- File Generation ---
         async function generateFile() {
-            if (!currentVerseData) {
+            if (!currentVerseData && !currentPassageData) {
                 document.getElementById('status-message').style.color = '#dc3545';
                 document.getElementById('status-message').textContent = 'Please load verse data first.';
                 return;
@@ -266,11 +287,9 @@
             // 2. Call the Final Python Generation Function
             try {
                 // We send the configuration map AND the entire verse data object back to Python
-                const result = await pywebview.api.generate_flextext(
-                    currentVerseData.verse_ref, 
-                    configMap,
-                    currentVerseData 
-                );
+                const ref = currentPassageData ? currentPassageData.passage_ref : currentVerseData.verse_ref;
+                const payload = currentPassageData ? currentPassageData : currentVerseData;
+                const result = await pywebview.api.generate_flextext(ref, configMap, payload);
 
                 // Update status message based on result from Python
                 if (result.startsWith('✅')) {
