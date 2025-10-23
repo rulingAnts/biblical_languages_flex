@@ -1,0 +1,13 @@
+{
+  "name": "biblical-languages-flex-web",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Offline test server for the docs/ web app",
+  "scripts": {
+    "serve": "node tools/dev-server.js",
+    "serve:port": "node tools/dev-server.js --port 9090"
+  },
+  "engines": {
+    "node": ">=14"
+  }
+}
