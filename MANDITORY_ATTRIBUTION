@@ -1,1 +1,9 @@
-"The Greek New Testament text used is the SBL Greek New Testament. Copyright c◯ 2010 Logos Bible Software. Used with permission. This work is licensed under a Creative Commons Attribution 4.0 International License."
+Greek text and morphology:
+- MorphGNT lemmatization and parsing by James Tauber (CC BY-SA). See https://github.com/morphgnt/
+- Base text: SBL Greek New Testament (SBLGNT). Copyright © 2010 Logos Bible Software and the Society of Biblical Literature. See SBLGNT.com for license details.
+
+Strong’s glosses:
+- Derived from TBESG – Tyndale Brief lexicon of Extended Strong’s for Greek. Data created for www.STEPBible.org by Tyndale House Cambridge and others (CC BY 4.0).
+
+English translation (when enabled):
+- Lexham English Bible (LEB). Scripture quotations are from the Lexham English Bible (LEB). Copyright © Logos Bible Software. Used with permission. License: http://www.lexhamenglishbible.com/license/

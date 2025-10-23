@@ -75,6 +75,14 @@
             <input type="text" id="verse-input" value="John 1:1-1:3" required style="flex-grow: 1;">
             <button onclick="loadVerseData()" style="background-color: #007BFF; color: white;">Load Data</button>
         </div>
+        <div class="verse-lookup-group" style="margin-top:10px;">
+            <label for="translation-select">Translation (phrase-level):</label>
+            <select id="translation-select" style="max-width: 280px;">
+                <option value="AUTO">Auto (first available)</option>
+                <option value="NONE">None (use gloss-based)</option>
+            </select>
+            <button onclick="applyTranslationChoice()" style="background-color:#6c757d;color:white;">Set</button>
+        </div>
         <div id="interlinear-display">
             <p>Awaiting verse data...</p>
         </div>
@@ -102,53 +110,7 @@
             <option value="lemma">Lemma (Lexical Form)</option>
             <option value="strongs_number">Strong's Number</option>
         </select>
-        
-        <hr>
-        
-        <h4>Phrase-Level: Translation Lines</h4>
-        <input type="checkbox" id="include-literal" checked> 
-        <label for="include-literal">Include Literal Translation (type="lit", lang="en")</label>
-        <br><small style="margin-left: 20px;">*Free Translation (type="gls") is always included.</small>
-
-        <hr>
-        
-        <h4>Word-Level: Analysis Layers (type="msa")</h4>
-        <p style="font-size: 0.9em; margin-top: 5px;">Map multiple interlinear fields to custom **Morpheme Analysis** writing systems.</p>
-
-        <template id="analysis-row-template">
-            <div class="data-map-row">
-                <select class="analysis-data-key" required>
-                    <option value="" disabled selected>Select Data Field</option>
-                    <option value="morphology">Morphology Tag</option>
-                    <option value="strongs_number">Strong's Number</option>
-                    <option value="lemma">Lemma</option>
-                    <option value="tr_transliteration">Transliteration</option>
-                    <option value="greek_word">Greek Word</option>
-                </select>
-                <input type="text" class="analysis-ws-id" placeholder="Enter FLEx WS ID (e.g., grc-morph)" required>
-                <button class="remove-btn" onclick="removeRow(this)">Remove</button>
-            </div>
-        </template>
-        
-        <div id="analysis-container">
-            <div class="data-map-row">
-                <select class="analysis-data-key" required>
-                    <option value="morphology" selected>Morphology Tag</option>
-                </select>
-                <input type="text" class="analysis-ws-id" value="grc-morph" required>
-                <button class="remove-btn" onclick="removeRow(this)">Remove</button>
-            </div>
-            <div class="data-map-row">
-                <select class="analysis-data-key" required>
-                    <option value="strongs_number" selected>Strong's Number</option>
-                </select>
-                <input type="text" class="analysis-ws-id" value="grc-strongs" required>
-                <button class="remove-btn" onclick="removeRow(this)">Remove</button>
-            </div>
-        </div>
-        
-        <button onclick="addRow()" style="background-color: #6c757d; color: white; margin-top: 10px;">+ Add Analysis Layer</button>
-    </div>
+ </div>
 
     <button class="primary-btn" onclick="generateFile()" style="width: 100%; font-size: 1.2em;">
         📥 Generate and Save .flextext File
@@ -156,20 +118,21 @@
 
     <p id="status-message" style="color: #007BFF; margin-top: 15px; font-weight: bold;"></p>
 
+    <div class="config-box" style="margin-top: 10px;">
+        <h3>Attributions and License</h3>
+        <div id="attribution-box" style="font-size: 0.9em; color: #444; line-height: 1.4;">
+            <!-- Filled dynamically -->
+        </div>
+    </div>
+
     <script>
     let currentVerseData = null; // For single verse (legacy)
     let currentPassageData = null; // For ranges
+    let availableTranslations = []; // IDs from Python
+    let selectedTranslation = null;
 
         // --- Utility Functions ---
-        function addRow() {
-            const template = document.getElementById('analysis-row-template');
-            const clone = template.content.cloneNode(true);
-            document.getElementById('analysis-container').appendChild(clone);
-        }
-
-        function removeRow(buttonElement) {
-            buttonElement.parentNode.remove();
-        }
+        // Analysis mapping removed (morpheme export not supported)
 
         // --- Data Retrieval ---
         async function loadVerseData() {
@@ -254,32 +217,8 @@
             // 1. Build the Configuration Map from the UI inputs
             const configMap = {
                 'baseline_data_key': document.getElementById('baseline-map').value,
-                'word_gloss_data_key': document.getElementById('word-gloss-map').value,
-                'include_literal': document.getElementById('include-literal').checked,
-                'analysis_map': {}
+                'word_gloss_data_key': document.getElementById('word-gloss-map').value
             };
-
-            // Iterate over all dynamic analysis rows
-            const rows = document.getElementById('analysis-container').children;
-            for (const row of rows) {
-                const dataKeySelect = row.querySelector('.analysis-data-key');
-                const wsIdInput = row.querySelector('.analysis-ws-id');
-                
-                if (dataKeySelect && wsIdInput) {
-                    const dataKey = dataKeySelect.value;
-                    const wsId = wsIdInput.value.trim();
-                    
-                    if (dataKey && wsId) {
-                        // Check for duplicate WS IDs (optional but helpful guardrail)
-                        if (Object.values(configMap.analysis_map).includes(wsId)) {
-                            document.getElementById('status-message').style.color = '#dc3545';
-                            document.getElementById('status-message').textContent = `Error: Duplicate Writing System ID '${wsId}' detected. Please use unique IDs.`;
-                            return;
-                        }
-                        configMap.analysis_map[dataKey] = wsId;
-                    }
-                }
-            }
             
             document.getElementById('status-message').style.color = '#007BFF';
             document.getElementById('status-message').textContent = 'Generating FlexText XML... Please select a save location.';
@@ -308,8 +247,72 @@
         // --- Initialization ---
         window.addEventListener('pywebviewready', () => {
             // Load a default verse when the app starts
-            loadVerseData(); 
+            initTranslations().then(loadVerseData);
         });
+
+        async function initTranslations() {
+            try {
+                const info = await pywebview.api.get_available_translations();
+                const sel = document.getElementById('translation-select');
+                // Clear old options except first two
+                while (sel.options.length > 2) sel.remove(2);
+                if (info && info.available) {
+                    availableTranslations = info.available;
+                    info.available.forEach(id => {
+                        const opt = document.createElement('option');
+                        opt.value = id;
+                        opt.textContent = id;
+                        sel.appendChild(opt);
+                    });
+                    selectedTranslation = info.selected || null;
+                    if (selectedTranslation) sel.value = selectedTranslation;
+                }
+                renderAttribution();
+            } catch (e) {
+                console.warn('Translations init failed:', e);
+            }
+        }
+
+        async function applyTranslationChoice() {
+            const sel = document.getElementById('translation-select').value;
+            if (sel === 'AUTO') {
+                // Re-init to pick first available on Python side (it already set a default at load time)
+                await initTranslations();
+                document.getElementById('status-message').textContent = 'Translation set to AUTO.';
+                return;
+            }
+            try {
+                const res = await pywebview.api.set_translation(sel);
+                if (res.ok) {
+                    selectedTranslation = res.selected;
+                    document.getElementById('status-message').style.color = '#28a745';
+                    document.getElementById('status-message').textContent = `Translation set to ${selectedTranslation || 'NONE'}.`;
+                    renderAttribution();
+                } else {
+                    document.getElementById('status-message').style.color = '#dc3545';
+                    document.getElementById('status-message').textContent = res.error || 'Failed to set translation';
+                }
+            } catch (e) {
+                document.getElementById('status-message').style.color = '#dc3545';
+                document.getElementById('status-message').textContent = `Error: ${e.message}`;
+            }
+        }
+
+        function renderAttribution() {
+            const box = document.getElementById('attribution-box');
+            const lines = [];
+            // Greek text and morphology
+            lines.push('Greek text and morphology: MorphGNT lemmatization and parsing by James Tauber (CC BY-SA). Base text: SBL Greek New Testament (SBLGNT). © 2010 Logos Bible Software and the Society of Biblical Literature.');
+            // Strong’s glosses
+            lines.push('Strong’s glosses: Derived from TBESG – Tyndale Brief lexicon of Extended Strong’s for Greek. Data created for www.STEPBible.org by Tyndale House Cambridge and others (CC BY 4.0).');
+            // Translation
+            if (selectedTranslation === 'LEB') {
+                lines.push('Translation: Lexham English Bible (LEB). Scripture quotations are from the LEB. © Logos Bible Software. Used with permission. License: http://www.lexhamenglishbible.com/license/');
+            } else {
+                lines.push('Translation: none selected (phrase-level line uses a simple gloss-based literal).');
+            }
+            box.innerHTML = '<ul style="margin:0;padding-left:18px;">' + lines.map(l => `<li>${l}</li>`).join('') + '</ul>';
+        }
     </script>
 
 </body>

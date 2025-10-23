@@ -27,9 +27,12 @@ except Exception:
 # --- GLOBAL SWORD MODULES (Initialized at startup) ---
 MORPHGNT_MODULE = None   # python-sword module handle OR pysword SwordBible
 STRONGSGK_MODULE = None  # python-sword lexicon module handle
+TRANSLATION_MODULES = {}  # id -> module handle
+SELECTED_TRANSLATION_ID = None  # currently selected translation id
 GNT_MODULE_ID = "MorphGNT"
 # Match your config header: mods.d/StrongsGk.conf defines [StrongsGreek]
 GLOSS_MODULE_ID = "StrongsGreek"
+TRANSLATION_MODULE_IDS = ["LEB"]  # Only LEB supported
 
 # Optional local Strong's JSON (public domain) fallback
 LOCAL_STRONGS = None  # dict like {"3056": "word, message"}
@@ -132,7 +135,7 @@ def _try_load_local_strongs_json():
 
 def load_sword_modules():
     """Initialize text and lexicon sources based on available backends."""
-    global MORPHGNT_MODULE, STRONGSGK_MODULE, BACKEND
+    global MORPHGNT_MODULE, STRONGSGK_MODULE, BACKEND, TRANSLATION_MODULES, SELECTED_TRANSLATION_ID
 
     SWORD_REPO_PATH = find_repo_path('sword_repo')
 
@@ -145,6 +148,19 @@ def load_sword_modules():
                 STRONGSGK_MODULE = manager.get_module(GLOSS_MODULE_ID)
             except Exception:
                 STRONGSGK_MODULE = None
+            # Optional English translations
+            TRANSLATION_MODULES = {}
+            SELECTED_TRANSLATION_ID = None
+            for mid in TRANSLATION_MODULE_IDS:
+                try:
+                    mod = manager.get_module(mid)
+                    if mod:
+                        TRANSLATION_MODULES[mid] = mod
+                        if not SELECTED_TRANSLATION_ID:
+                            SELECTED_TRANSLATION_ID = mid
+                        print(f"Detected translation module: {mid}")
+                except Exception:
+                    continue
 
             if not MORPHGNT_MODULE:
                 raise ValueError(f"Module not found: {GNT_MODULE_ID}")
@@ -161,6 +177,19 @@ def load_sword_modules():
             MORPHGNT_MODULE = mods.get_bible_from_module(GNT_MODULE_ID)
             # pysword does not provide lexicon access; rely on local JSON
             STRONGSGK_MODULE = None
+            # Try to load optional English translations
+            TRANSLATION_MODULES = {}
+            SELECTED_TRANSLATION_ID = None
+            for mid in TRANSLATION_MODULE_IDS:
+                try:
+                    tmod = mods.get_bible_from_module(mid)
+                    if tmod:
+                        TRANSLATION_MODULES[mid] = tmod
+                        if not SELECTED_TRANSLATION_ID:
+                            SELECTED_TRANSLATION_ID = mid
+                        print(f"Detected translation module: {mid}")
+                except Exception:
+                    continue
             print("pysword backend loaded.")
         except Exception as e:
             print(f"FATAL: Could not initialize pysword backend: {e}")
@@ -264,6 +293,28 @@ def fetch_sword_data(book: str, chapter: int, verse: int) -> InterlinearVerse:
     return verse_data
 
 
+def get_phrase_translation(book: str, chapter: int, verse: int) -> str:
+    """Return an English translation for the verse if a translation module is available; else ''."""
+    if not TRANSLATION_MODULES or not SELECTED_TRANSLATION_ID:
+        return ''
+    module = TRANSLATION_MODULES.get(SELECTED_TRANSLATION_ID)
+    if not module:
+        return ''
+    ref = f"{book} {chapter}:{verse}"
+    try:
+        if BACKEND == 'python-sword':
+            # python-sword may include markup; strip tags crudely
+            text = module.get_entry(ref)
+            # Remove simple tags
+            text = re.sub(r"<[^>]+>", "", text)
+            return text.strip()
+        else:
+            # pysword supports clean output
+            return module.get(books=book, chapters=chapter, verses=verse, clean=True).strip()
+    except Exception:
+        return ''
+
+
 # --- Range Parsing and Passage Fetching (NEW) ---
 
 def parse_reference_range(ref: str):
@@ -334,62 +385,80 @@ def fetch_passage_data(book: str, start_ch: int, start_vs: int, end_ch: int, end
 # --- 3. FlexText XML Generation (Unchanged) ---
 
 def build_flextext_xml(verse_data: InterlinearVerse, config_map: dict) -> str:
-    """Generates the FlexText XML string based on verse data and user configuration."""
-    
-    # --- Setup XML Root ---
-    root = ET.Element('interlinear-text', guid=str(uuid.uuid4()))
+    """Generates FlexText for a single verse in the expected <document> format, without morpheme blocks."""
+
+    def make_title_and_abbrev(v: InterlinearVerse):
+        title = v.get_verse_ref()
+        abbrev = title.replace(' ', '').replace(':', '_')
+        return title, abbrev
+
+    baseline_key = config_map.get('baseline_data_key', 'greek_word')
+    gloss_key = config_map.get('word_gloss_data_key', 'en_gloss')
+
+    # Root document and interlinear-text
+    doc = ET.Element('document', version='2')
+    root = ET.SubElement(doc, 'interlinear-text', guid=str(uuid.uuid4()))
+
+    # Title metadata
+    title, abbrev = make_title_and_abbrev(verse_data)
+    ET.SubElement(root, 'item', type='title', lang='en').text = title
+    ET.SubElement(root, 'item', type='title-abbreviation', lang='en').text = abbrev
+
+    # Paragraph structure
     paragraphs = ET.SubElement(root, 'paragraphs')
     paragraph = ET.SubElement(paragraphs, 'paragraph')
     phrases = ET.SubElement(paragraph, 'phrases')
     phrase = ET.SubElement(phrases, 'phrase', guid=str(uuid.uuid4()))
-    
-    # 1. Free Translation Line (Item type="gls" for phrase)
-    ET.SubElement(phrase, 'item', type='gls', lang='en').text = verse_data.free_translation
-    
-    # 2. Literal Translation Line (Item type="lit" for phrase)
-    if config_map.get('include_literal') and verse_data.literal_translation:
-        ET.SubElement(phrase, 'item', type='lit', lang='en').text = verse_data.literal_translation
-        
+
+    # Phrase-level Greek text (concatenate baseline words)
+    greek_phrase = ' '.join([w.to_dict().get(baseline_key, '') for w in verse_data.words]).strip()
+    ET.SubElement(phrase, 'item', type='txt', lang='grc').text = greek_phrase
+    # Verse number
+    ET.SubElement(phrase, 'item', type='segnum', lang='en').text = str(verse_data.verse)
+
+    # Words
     words_element = ET.SubElement(phrase, 'words')
-    
-    # --- Process WORDS ---
     for word_obj in verse_data.words:
         word = ET.SubElement(words_element, 'word', guid=str(uuid.uuid4()))
-        word_data = word_obj.to_dict()
+        wd = word_obj.to_dict()
+        ET.SubElement(word, 'item', type='txt', lang='grc').text = wd.get(baseline_key, '')
+        ET.SubElement(word, 'item', type='gls', lang='en').text = wd.get(gloss_key, '')
 
-        # 3. BASELINE TEXT (Item type="txt")
-        baseline_key = config_map.get('baseline_data_key', 'greek_word')
-        baseline_text = word_data.get(baseline_key, '')
-        ET.SubElement(word, 'item', type='txt', lang='grc').text = baseline_text # Use 'grc' as a default WS ID
-        
-        # 4. WORD GLOSS (Item type="gls")
-        gloss_key = config_map.get('word_gloss_data_key', 'en_gloss')
-        gloss_text = word_data.get(gloss_key, '')
-        ET.SubElement(word, 'item', type='gls', lang='en').text = gloss_text # Use 'en' as a default WS ID
-        
-        # 5. ANALYSIS LAYERS (Item type="msa" under morphemes)
-        if config_map.get('analysis_map'):
-            morphemes_element = ET.SubElement(word, 'morphemes')
-            morph_element = ET.SubElement(morphemes_element, 'morph') # Treat as single word-morpheme
+    # Phrase-level English translation (prefer module; fallback to provided literal or gloss concat)
+    literal = get_phrase_translation(verse_data.book, verse_data.chapter, verse_data.verse)
+    if not literal:
+        literal = verse_data.literal_translation.strip() if verse_data.literal_translation else ''
+    if not literal:
+        literal = ' '.join([w.to_dict().get(gloss_key, '') for w in verse_data.words]).strip()
+    ET.SubElement(phrase, 'item', type='gls', lang='en').text = literal
 
-            for data_key, ws_id in config_map['analysis_map'].items():
-                value = word_data.get(data_key)
-                if value:
-                    # Add a morphological analysis item for each selected layer
-                    ET.SubElement(morph_element, 'item', type='msa', lang=ws_id).text = value
-
-    # --- Finalize and Return XML ---
-    tree = ET.ElementTree(root)
-    # Note: ET.indent requires Python 3.9+
+    # Finalize
+    tree = ET.ElementTree(doc)
     if sys.version_info >= (3, 9):
-        ET.indent(tree, space="  ") 
-    
-    return ET.tostring(root, encoding='utf-8', xml_declaration=True).decode('utf-8')
+        ET.indent(tree, space="  ")
+    return ET.tostring(doc, encoding='utf-8', xml_declaration=True).decode('utf-8')
 
 
 def build_flextext_xml_for_passage(verses: list, config_map: dict) -> str:
-    """Generates FlexText for multiple verses as separate phrases in one paragraph."""
-    root = ET.Element('interlinear-text', guid=str(uuid.uuid4()))
+    """Generates FlexText for multiple verses as separate phrases in one paragraph, wrapped in <document>."""
+    if not verses:
+        return build_flextext_xml(InterlinearVerse('','',0), config_map)
+
+    baseline_key = config_map.get('baseline_data_key', 'greek_word')
+    gloss_key = config_map.get('word_gloss_data_key', 'en_gloss')
+
+    # Title from first and last verse
+    first, last = verses[0], verses[-1]
+    title = f"{first.book} {first.chapter}:{first.verse}"
+    if (first.chapter, first.verse) != (last.chapter, last.verse):
+        title = f"{first.book} {first.chapter}:{first.verse}-{last.chapter}:{last.verse}"
+    abbrev = title.replace(' ', '').replace(':', '_')
+
+    doc = ET.Element('document', version='2')
+    root = ET.SubElement(doc, 'interlinear-text', guid=str(uuid.uuid4()))
+    ET.SubElement(root, 'item', type='title', lang='en').text = title
+    ET.SubElement(root, 'item', type='title-abbreviation', lang='en').text = abbrev
+
     paragraphs = ET.SubElement(root, 'paragraphs')
     paragraph = ET.SubElement(paragraphs, 'paragraph')
     phrases = ET.SubElement(paragraph, 'phrases')
@@ -397,37 +466,31 @@ def build_flextext_xml_for_passage(verses: list, config_map: dict) -> str:
     for v in verses:
         phrase = ET.SubElement(phrases, 'phrase', guid=str(uuid.uuid4()))
 
-        # Phrase-level translations
-        ET.SubElement(phrase, 'item', type='gls', lang='en').text = v.free_translation
-        if config_map.get('include_literal') and v.literal_translation:
-            ET.SubElement(phrase, 'item', type='lit', lang='en').text = v.literal_translation
+        # Phrase-level baseline (full Greek text)
+        greek_phrase = ' '.join([w.to_dict().get(baseline_key, '') for w in v.words]).strip()
+        ET.SubElement(phrase, 'item', type='txt', lang='grc').text = greek_phrase
+        # Verse number
+        ET.SubElement(phrase, 'item', type='segnum', lang='en').text = str(v.verse)
 
         words_element = ET.SubElement(phrase, 'words')
-
         for word_obj in v.words:
             word = ET.SubElement(words_element, 'word', guid=str(uuid.uuid4()))
-            word_data = word_obj.to_dict()
+            wd = word_obj.to_dict()
+            ET.SubElement(word, 'item', type='txt', lang='grc').text = wd.get(baseline_key, '')
+            ET.SubElement(word, 'item', type='gls', lang='en').text = wd.get(gloss_key, '')
 
-            baseline_key = config_map.get('baseline_data_key', 'greek_word')
-            baseline_text = word_data.get(baseline_key, '')
-            ET.SubElement(word, 'item', type='txt', lang='grc').text = baseline_text
+        # Phrase-level English translation (prefer module; fallback to provided literal or gloss concat)
+        literal = get_phrase_translation(v.book, v.chapter, v.verse)
+        if not literal:
+            literal = v.literal_translation.strip() if v.literal_translation else ''
+        if not literal:
+            literal = ' '.join([w.to_dict().get(gloss_key, '') for w in v.words]).strip()
+        ET.SubElement(phrase, 'item', type='gls', lang='en').text = literal
 
-            gloss_key = config_map.get('word_gloss_data_key', 'en_gloss')
-            gloss_text = word_data.get(gloss_key, '')
-            ET.SubElement(word, 'item', type='gls', lang='en').text = gloss_text
-
-            if config_map.get('analysis_map'):
-                morphemes_element = ET.SubElement(word, 'morphemes')
-                morph_element = ET.SubElement(morphemes_element, 'morph')
-                for data_key, ws_id in config_map['analysis_map'].items():
-                    value = word_data.get(data_key)
-                    if value:
-                        ET.SubElement(morph_element, 'item', type='msa', lang=ws_id).text = value
-
-    tree = ET.ElementTree(root)
+    tree = ET.ElementTree(doc)
     if sys.version_info >= (3, 9):
         ET.indent(tree, space="  ")
-    return ET.tostring(root, encoding='utf-8', xml_declaration=True).decode('utf-8')
+    return ET.tostring(doc, encoding='utf-8', xml_declaration=True).decode('utf-8')
 
 
 # --- 4. PyWebView API Class (Unchanged, relies on updated functions) ---
@@ -464,6 +527,30 @@ class Api:
             }
         except Exception as e:
             return {'error': f"Python Error: {str(e)}"}
+
+    def get_available_translations(self):
+        """Return list of available translation IDs and which is selected."""
+        try:
+            return {
+                'available': list(TRANSLATION_MODULES.keys()),
+                'selected': SELECTED_TRANSLATION_ID
+            }
+        except Exception as e:
+            return {'error': f"Python Error: {str(e)}"}
+
+    def set_translation(self, module_id):
+        """Set the currently selected translation by module id, or disable with 'NONE'."""
+        try:
+            global SELECTED_TRANSLATION_ID
+            if module_id == 'NONE':
+                SELECTED_TRANSLATION_ID = None
+                return {'ok': True, 'selected': None}
+            if module_id in TRANSLATION_MODULES:
+                SELECTED_TRANSLATION_ID = module_id
+                return {'ok': True, 'selected': module_id}
+            return {'ok': False, 'error': f"Translation '{module_id}' not available."}
+        except Exception as e:
+            return {'ok': False, 'error': f"Python Error: {str(e)}"}
 
     def generate_flextext(self, verse_ref, config_map, verse_data_json):
         """Called by JS to generate the XML and save the file."""
