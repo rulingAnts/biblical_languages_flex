@@ -24,14 +24,19 @@
     <p class="muted">
       This is a browser-only version. All data loads from this folder (GitHub Pages). No server is required.
     </p>
-    <div class="row">
-      <label for="ref">Reference (e.g., John 1:1 or John 1:1-1:5)</label>
+    <div id="protocol-warning" class="muted" style="display:none;color:#dc3545;margin-bottom:8px;">
+      Tip: Open this page via http(s) (e.g., using the local test server) so JSON can load. File URLs often block fetch.
     </div>
-    <input id="ref" type="text" value="John 1:1-1:3" />
+    <label for="book">Book</label>
+    <select id="book" style="max-width:420px;margin-bottom:8px;"></select>
+    <div class="row">
+      <label for="ref">Reference (within selected book, e.g., 1:1 or 1:1-1:5)</label>
+    </div>
+    <input id="ref" type="text" value="1:1-1:3" />
 
     <div style="margin-top:10px;">
       <button id="load">Load</button>
-      <button id="download" class="secondary">Generate .flextext</button>
+      <button id="download" class="secondary" disabled>Generate .flextext</button>
     </div>
 
     <div id="status" class="muted" style="margin-top:10px;"></div>
@@ -62,37 +67,54 @@
 
   <script>
   // Data layout: docs/assets/data/<Book>.json with mapping of "C:V" => { words:[{g, S, l, gls}], translation: string }
-  // We'll support ranges within a single book.
+  // We load exactly one book at a time via the dropdown; references are chapter:verse or chapter:verse-chapter:verse within that book.
   const statusEl = document.getElementById('status');
   const previewEl = document.getElementById('preview');
   const refInput = document.getElementById('ref');
+  const bookSelect = document.getElementById('book');
+  const downloadBtn = document.getElementById('download');
+
+  const BOOKS = [
+    'Matthew','Mark','Luke','John','Acts','Romans','1Corinthians','2Corinthians','Galatians','Ephesians','Philippians','Colossians','1Thessalonians','2Thessalonians','1Timothy','2Timothy','Titus','Philemon','Hebrews','James','1Peter','2Peter','1John','2John','3John','Jude','Revelation'
+  ];
+
+  const cache = {}; // book -> json data
+  let currentBook = null;
+  let currentPassage = null;
+  let currentVerses = null;
 
   document.getElementById('load').addEventListener('click', async () => {
-    const ref = refInput.value.trim();
     status('Loading…');
     try {
-      const passage = parseRange(ref);
-      const bookData = await loadBookJson(passage.book);
-      const verses = sliceVerses(bookData, passage);
-      renderPreview(passage, verses);
+      const passage = parseRange(refInput.value.trim());
+      await ensureBookLoaded(currentBook);
+      const verses = sliceVerses(cache[currentBook], { book: currentBook, ...passage });
+      currentPassage = { book: currentBook, ...passage };
+      currentVerses = verses;
+      renderPreview(currentPassage, verses);
+      downloadBtn.disabled = false;
       status('Loaded.');
     } catch (e) {
       status('Error: ' + e.message, true);
       previewEl.textContent = '—';
+      downloadBtn.disabled = true;
     }
   });
 
   document.getElementById('download').addEventListener('click', async () => {
-    const ref = refInput.value.trim();
     try {
-      const passage = parseRange(ref);
-      const bookData = await loadBookJson(passage.book);
-      const verses = sliceVerses(bookData, passage);
-      const xml = buildFlexText(passage, verses);
+      if (!currentVerses || !currentPassage) {
+        // Fallback: attempt to load
+        const passage = parseRange(refInput.value.trim());
+        await ensureBookLoaded(currentBook);
+        currentPassage = { book: currentBook, ...passage };
+        currentVerses = sliceVerses(cache[currentBook], currentPassage);
+      }
+      const xml = buildFlexText(currentPassage, currentVerses);
       const blob = new Blob([xml], { type: 'application/xml' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = buildFilename(passage);
+      a.download = buildFilename(currentPassage);
       a.click();
       URL.revokeObjectURL(a.href);
     } catch (e) {
@@ -106,54 +128,37 @@
   }
 
   function parseRange(ref){
-    // Expect formats like "John 1:1" or "John 1:1-1:5" (same-book ranges)
-    const m = ref.match(/^\s*([1-3]?[A-Za-z]+)\s+(\d+):(\d+)(?:\s*-\s*(\d+):(\d+))?\s*$/);
-    if(!m) throw new Error('Invalid reference. Try: John 1:1 or John 1:1-1:5');
-    const book = normalizeBook(m[1]);
-    const start = { c: parseInt(m[2],10), v: parseInt(m[3],10) };
-    const end = m[4] ? { c: parseInt(m[4],10), v: parseInt(m[5],10) } : { ...start };
+    // Expect formats like "1:1" or "1:1-1:5" (same-book ranges)
+    const m = ref.match(/^\s*(\d+):(\d+)(?:\s*-\s*(\d+):(\d+))?\s*$/);
+    if(!m) throw new Error('Invalid reference. Try: 1:1 or 1:1-1:5');
+    const start = { c: parseInt(m[1],10), v: parseInt(m[2],10) };
+    const end = m[3] ? { c: parseInt(m[3],10), v: parseInt(m[4],10) } : { ...start };
     if(end.c < start.c || (end.c===start.c && end.v < start.v)) throw new Error('End precedes start.');
-    return { book, start, end };
+    return { start, end };
   }
 
-  function normalizeBook(b){
-    const map = {
-      'Jn':'John','Jhn':'John','Joh':'John','John':'John',
-      'Mt':'Matthew','Matt':'Matthew','Matthew':'Matthew',
-      'Mk':'Mark','Mrk':'Mark','Mark':'Mark',
-      'Lk':'Luke','Luk':'Luke','Luke':'Luke',
-      'Ac':'Acts','Act':'Acts','Acts':'Acts',
-      'Rom':'Romans','Romans':'Romans',
-      '1Cor':'1Corinthians','1Co':'1Corinthians','1 Corinthians':'1Corinthians','1Corinthians':'1Corinthians',
-      '2Cor':'2Corinthians','2Co':'2Corinthians','2 Corinthians':'2Corinthians','2Corinthians':'2Corinthians',
-      'Gal':'Galatians','Galatians':'Galatians',
-      'Eph':'Ephesians','Ephesians':'Ephesians',
-      'Php':'Philippians','Philippians':'Philippians',
-      'Col':'Colossians','Colossians':'Colossians',
-      '1Th':'1Thessalonians','1 Thessalonians':'1Thessalonians','1Thessalonians':'1Thessalonians',
-      '2Th':'2Thessalonians','2 Thessalonians':'2Thessalonians','2Thessalonians':'2Thessalonians',
-      '1Tim':'1Timothy','1 Timothy':'1Timothy','1Timothy':'1Timothy',
-      '2Tim':'2Timothy','2 Timothy':'2Timothy','2Timothy':'2Timothy',
-      'Tit':'Titus','Titus':'Titus',
-      'Phm':'Philemon','Philemon':'Philemon',
-      'Heb':'Hebrews','Hebrews':'Hebrews',
-      'Jas':'James','James':'James',
-      '1Pet':'1Peter','1 Peter':'1Peter','1Peter':'1Peter',
-      '2Pet':'2Peter','2 Peter':'2Peter','2Peter':'2Peter',
-      '1Jn':'1John','1 John':'1John','1John':'1John',
-      '2Jn':'2John','2 John':'2John','2John':'2John',
-      '3Jn':'3John','3 John':'3John','3John':'3John',
-      'Jude':'Jude','Jd':'Jude',
-      'Rev':'Revelation','Re':'Revelation','Revelation':'Revelation'
-    };
-    return map[b] || b;
-  }
-
-  async function loadBookJson(book){
+  async function ensureBookLoaded(book){
+    if (!book) throw new Error('No book selected.');
+    if (cache[book]) return;
     const path = `assets/data/${encodeURIComponent(book)}.json`;
-    const res = await fetch(path);
-    if(!res.ok) throw new Error(`Failed to load book data: ${book}`);
-    return res.json();
+    let res;
+    try {
+      res = await fetch(path, { cache: 'no-store' });
+    } catch (e) {
+      throw new Error(`Failed to fetch ${path}. Are you serving over http(s)?`);
+    }
+    if(!res.ok) throw new Error(`Book JSON not found for ${book} (${res.status})`);
+    const contentType = (res.headers.get('content-type') || '').toLowerCase();
+    const text = await res.text();
+    try {
+      if (!contentType.includes('application/json') && text.trim().startsWith('<')) {
+        throw new Error(`Expected JSON but received HTML. URL: ${path}`);
+      }
+      cache[book] = JSON.parse(text);
+    } catch (e) {
+      console.error('Failed to parse JSON for', path, 'Content-Type:', contentType, 'First 120 chars:', text.slice(0,120));
+      throw new Error(`Failed to parse JSON for ${book}. Check if the file exists at ${path}.`);
+    }
   }
 
   function sliceVerses(bookData, passage){
@@ -233,6 +238,40 @@
     xml += '</document>\n';
     return xml;
   }
+
+  // --- Initialization ---
+  (function init(){
+    if (location.protocol !== 'http:' && location.protocol !== 'https:') {
+      document.getElementById('protocol-warning').style.display = 'block';
+    }
+    // Populate books
+    BOOKS.forEach(b => {
+      const opt = document.createElement('option');
+      opt.value = b; opt.textContent = b;
+      bookSelect.appendChild(opt);
+    });
+    // default select John
+    currentBook = 'John';
+    bookSelect.value = currentBook;
+    ensureBookLoaded(currentBook).then(() => {
+      status(`Loaded book data: ${currentBook}. Enter a reference like 1:1-1:3 and click Load.`);
+    }).catch(e => status('Error: ' + e.message, true));
+
+    bookSelect.addEventListener('change', async () => {
+      currentBook = bookSelect.value;
+      downloadBtn.disabled = true;
+      currentPassage = null;
+      currentVerses = null;
+      status(`Loading book: ${currentBook}…`);
+      try {
+        await ensureBookLoaded(currentBook);
+        status(`Loaded book data: ${currentBook}.`);
+        previewEl.textContent = 'Awaiting data…';
+      } catch (e) {
+        status('Error: ' + e.message, true);
+      }
+    });
+  })();
   </script>
 </body>
 </html>

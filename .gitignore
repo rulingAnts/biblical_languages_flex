@@ -89,4 +89,7 @@ pnpm-lock.yaml
 .pnp.*
 .npm/
 .yarn/
-dev-server.js
+
+# Local-only dev server script (do not commit)
+tools/dev-server.local.js
+tools/dev-server.js

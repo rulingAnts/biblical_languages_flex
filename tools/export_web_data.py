@@ -24,11 +24,58 @@ if ROOT not in sys.path:
 
 import app as desktop_app  # reuse load_sword_modules, fetch_sword_data, get_phrase_translation
 
+# Candidate module book name variants to handle SWORD/OSIS naming differences
+BOOK_NAME_VARIANTS = {
+    'Matthew': ['Matthew', 'Matt', 'Mt'],
+    'Mark': ['Mark', 'Mk', 'Mrk'],
+    'Luke': ['Luke', 'Luk', 'Lk'],
+    'John': ['John', 'Jn', 'Jhn'],
+    'Acts': ['Acts', 'Act'],
+    'Romans': ['Romans', 'Rom', 'Ro'],
+    '1Corinthians': ['1Corinthians', '1 Corinthians', '1Cor', '1Co'],
+    '2Corinthians': ['2Corinthians', '2 Corinthians', '2Cor', '2Co'],
+    'Galatians': ['Galatians', 'Gal'],
+    'Ephesians': ['Ephesians', 'Eph'],
+    'Philippians': ['Philippians', 'Phil', 'Php'],
+    'Colossians': ['Colossians', 'Col'],
+    '1Thessalonians': ['1Thessalonians', '1 Thessalonians', '1Thess', '1Th', '1Thes'],
+    '2Thessalonians': ['2Thessalonians', '2 Thessalonians', '2Thess', '2Th', '2Thes'],
+    '1Timothy': ['1Timothy', '1 Timothy', '1Tim', '1Ti'],
+    '2Timothy': ['2Timothy', '2 Timothy', '2Tim', '2Ti'],
+    'Titus': ['Titus', 'Tit'],
+    'Philemon': ['Philemon', 'Phm', 'Phile'],
+    'Hebrews': ['Hebrews', 'Heb'],
+    'James': ['James', 'Jas'],
+    '1Peter': ['1Peter', '1 Peter', '1Pet', '1Pe', '1Pt'],
+    '2Peter': ['2Peter', '2 Peter', '2Pet', '2Pe', '2Pt'],
+    '1John': ['1John', '1 John', '1Jn', '1Jhn'],
+    '2John': ['2John', '2 John', '2Jn', '2Jhn'],
+    '3John': ['3John', '3 John', '3Jn', '3Jhn'],
+    'Jude': ['Jude', 'Jud'],
+    'Revelation': ['Revelation', 'Rev', 'Apocalypse'],
+}
+
+def resolve_module_book_name(preferred_book: str) -> str:
+    variants = BOOK_NAME_VARIANTS.get(preferred_book, [preferred_book])
+    for name in variants:
+        try:
+            vdata = desktop_app.fetch_sword_data(name, 1, 1)
+            if vdata and vdata.words:
+                return name
+        except Exception:
+            continue
+    # Last resort: return the preferred name
+    return preferred_book
+
 
 def export_book(book: str, out_dir: str):
     os.makedirs(out_dir, exist_ok=True)
     out_path = os.path.join(out_dir, f"{book}.json")
     result = {}
+
+    module_book = resolve_module_book_name(book)
+    if module_book != book:
+        print(f"  Using module book name '{module_book}' for '{book}'")
 
     # Simple discovery: iterate chapters starting at 1, verses from 1, stop when a chapter starts with 3 consecutive empty verses
     # This is resilient across modules without a chapter/verse manifest.
@@ -40,7 +87,7 @@ def export_book(book: str, out_dir: str):
         verse = 1
         while True:
             try:
-                vdata = desktop_app.fetch_sword_data(book, chapter, verse)
+                vdata = desktop_app.fetch_sword_data(module_book, chapter, verse)
             except Exception:
                 vdata = None
             if not vdata or not vdata.words:
@@ -61,7 +108,7 @@ def export_book(book: str, out_dir: str):
                         'gls': wd.get('en_gloss', ''),
                         'l': wd.get('lemma', ''),
                     })
-                tr = desktop_app.get_phrase_translation(book, chapter, verse) or ''
+                tr = desktop_app.get_phrase_translation(module_book, chapter, verse) or ''
                 key = f"{chapter}:{verse}"
                 result[key] = {
                     'words': words,
