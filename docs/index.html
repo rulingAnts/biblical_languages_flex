@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FLEx Interlinear (Web)</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;max-width:900px;margin:0 auto;padding:20px;background:#f7f7f7}
+    h1{color:#0b5ed7}
+    .card{background:#fff;border:1px solid #e4e4e4;border-radius:8px;padding:16px;margin:16px 0;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+    label{display:block;margin:.25rem 0 .25rem;color:#333}
+    input[type="text"],select{width:100%;max-width:420px;padding:8px;border:1px solid #ccc;border-radius:4px}
+    button{background:#198754;color:#fff;border:0;border-radius:4px;padding:8px 14px;cursor:pointer}
+    button.secondary{background:#6c757d}
+    #preview{font-family:monospace;white-space:pre-wrap;border:1px solid #0b5ed7;background:#eef6ff;border-radius:6px;padding:10px}
+    .muted{color:#666;font-size:.9em}
+    .row{display:flex;gap:10px;align-items:center}
+    a { color:#0b5ed7; }
+  </style>
+</head>
+<body>
+  <h1>📖 FLEx Interlinear (Web-only)</h1>
+  <div class="card">
+    <p class="muted">
+      This is a browser-only version. All data loads from this folder (GitHub Pages). No server is required.
+    </p>
+    <div class="row">
+      <label for="ref">Reference (e.g., John 1:1 or John 1:1-1:5)</label>
+    </div>
+    <input id="ref" type="text" value="John 1:1-1:3" />
+
+    <div style="margin-top:10px;">
+      <button id="load">Load</button>
+      <button id="download" class="secondary">Generate .flextext</button>
+    </div>
+
+    <div id="status" class="muted" style="margin-top:10px;"></div>
+
+    <div id="preview" style="margin-top:10px;">Awaiting data…</div>
+  </div>
+
+  <div class="card">
+    <h3>Downloads</h3>
+    <ul>
+      <li><a id="flex-template-link" href="assets/NT%20Greek%20blank%20project.fwbackup" download>FLEx template project (.fwbackup)</a></li>
+      <li><a href="assets/strongs_greek.json" download>Strong’s Glosses (TBESG) JSON</a></li>
+      <li><a href="sword_repo/" target="_blank" rel="noopener">SWORD modules packaged with this app</a> (for transparency; not used directly in-browser)</li>
+    </ul>
+    <p class="muted">
+      Tip: You can import the generated .flextext into the FLEx template project above for best results.
+    </p>
+  </div>
+
+  <div class="card">
+    <h3>Attributions and License</h3>
+    <ul>
+      <li>Greek text and morphology: MorphGNT lemmatization and parsing by James Tauber (CC BY-SA). Base text: SBLGNT © 2010 Logos Bible Software and the Society of Biblical Literature.</li>
+      <li>Strong’s glosses: TBESG – Tyndale Brief lexicon of Extended Strong’s for Greek, from www.STEPBible.org by Tyndale House Cambridge and others (CC BY 4.0).</li>
+      <li>Translation: Lexham English Bible (LEB). Scripture quotations are from the LEB. © Logos Bible Software. Used with permission. License: http://www.lexhamenglishbible.com/license/</li>
+    </ul>
+  </div>
+
+  <script>
+  // Data layout: docs/assets/data/<Book>.json with mapping of "C:V" => { words:[{g, S, l, gls}], translation: string }
+  // We'll support ranges within a single book.
+  const statusEl = document.getElementById('status');
+  const previewEl = document.getElementById('preview');
+  const refInput = document.getElementById('ref');
+
+  document.getElementById('load').addEventListener('click', async () => {
+    const ref = refInput.value.trim();
+    status('Loading…');
+    try {
+      const passage = parseRange(ref);
+      const bookData = await loadBookJson(passage.book);
+      const verses = sliceVerses(bookData, passage);
+      renderPreview(passage, verses);
+      status('Loaded.');
+    } catch (e) {
+      status('Error: ' + e.message, true);
+      previewEl.textContent = '—';
+    }
+  });
+
+  document.getElementById('download').addEventListener('click', async () => {
+    const ref = refInput.value.trim();
+    try {
+      const passage = parseRange(ref);
+      const bookData = await loadBookJson(passage.book);
+      const verses = sliceVerses(bookData, passage);
+      const xml = buildFlexText(passage, verses);
+      const blob = new Blob([xml], { type: 'application/xml' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = buildFilename(passage);
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } catch (e) {
+      status('Error: ' + e.message, true);
+    }
+  });
+
+  function status(msg, isError=false){
+    statusEl.textContent = msg;
+    statusEl.style.color = isError ? '#dc3545' : '#333';
+  }
+
+  function parseRange(ref){
+    // Expect formats like "John 1:1" or "John 1:1-1:5" (same-book ranges)
+    const m = ref.match(/^\s*([1-3]?[A-Za-z]+)\s+(\d+):(\d+)(?:\s*-\s*(\d+):(\d+))?\s*$/);
+    if(!m) throw new Error('Invalid reference. Try: John 1:1 or John 1:1-1:5');
+    const book = normalizeBook(m[1]);
+    const start = { c: parseInt(m[2],10), v: parseInt(m[3],10) };
+    const end = m[4] ? { c: parseInt(m[4],10), v: parseInt(m[5],10) } : { ...start };
+    if(end.c < start.c || (end.c===start.c && end.v < start.v)) throw new Error('End precedes start.');
+    return { book, start, end };
+  }
+
+  function normalizeBook(b){
+    const map = {
+      'Jn':'John','Jhn':'John','Joh':'John','John':'John',
+      'Mt':'Matthew','Matt':'Matthew','Matthew':'Matthew',
+      'Mk':'Mark','Mrk':'Mark','Mark':'Mark',
+      'Lk':'Luke','Luk':'Luke','Luke':'Luke',
+      'Ac':'Acts','Act':'Acts','Acts':'Acts',
+      'Rom':'Romans','Romans':'Romans',
+      '1Cor':'1Corinthians','1Co':'1Corinthians','1 Corinthians':'1Corinthians','1Corinthians':'1Corinthians',
+      '2Cor':'2Corinthians','2Co':'2Corinthians','2 Corinthians':'2Corinthians','2Corinthians':'2Corinthians',
+      'Gal':'Galatians','Galatians':'Galatians',
+      'Eph':'Ephesians','Ephesians':'Ephesians',
+      'Php':'Philippians','Philippians':'Philippians',
+      'Col':'Colossians','Colossians':'Colossians',
+      '1Th':'1Thessalonians','1 Thessalonians':'1Thessalonians','1Thessalonians':'1Thessalonians',
+      '2Th':'2Thessalonians','2 Thessalonians':'2Thessalonians','2Thessalonians':'2Thessalonians',
+      '1Tim':'1Timothy','1 Timothy':'1Timothy','1Timothy':'1Timothy',
+      '2Tim':'2Timothy','2 Timothy':'2Timothy','2Timothy':'2Timothy',
+      'Tit':'Titus','Titus':'Titus',
+      'Phm':'Philemon','Philemon':'Philemon',
+      'Heb':'Hebrews','Hebrews':'Hebrews',
+      'Jas':'James','James':'James',
+      '1Pet':'1Peter','1 Peter':'1Peter','1Peter':'1Peter',
+      '2Pet':'2Peter','2 Peter':'2Peter','2Peter':'2Peter',
+      '1Jn':'1John','1 John':'1John','1John':'1John',
+      '2Jn':'2John','2 John':'2John','2John':'2John',
+      '3Jn':'3John','3 John':'3John','3John':'3John',
+      'Jude':'Jude','Jd':'Jude',
+      'Rev':'Revelation','Re':'Revelation','Revelation':'Revelation'
+    };
+    return map[b] || b;
+  }
+
+  async function loadBookJson(book){
+    const path = `assets/data/${encodeURIComponent(book)}.json`;
+    const res = await fetch(path);
+    if(!res.ok) throw new Error(`Failed to load book data: ${book}`);
+    return res.json();
+  }
+
+  function sliceVerses(bookData, passage){
+    const verses = [];
+    for(let c = passage.start.c; c <= passage.end.c; c++){
+      const vStart = (c === passage.start.c) ? passage.start.v : 1;
+      const vEnd = (c === passage.end.c) ? passage.end.v : 999;
+      for(let v=vStart; v<=vEnd; v++){
+        const key = `${c}:${v}`;
+        const verse = bookData[key];
+        if(verse) verses.push({ ref: `${passage.book} ${key}`, ...verse, c, v });
+      }
+    }
+    if(!verses.length) throw new Error('No verses found for that range.');
+    return verses;
+  }
+
+  function renderPreview(passage, verses){
+    let out = `Reference: ${passage.book} ${passage.start.c}:${passage.start.v}`;
+    if(passage.end.c !== passage.start.c || passage.end.v !== passage.start.v){
+      out += `-${passage.end.c}:${passage.end.v}`;
+    }
+    out += `\nVerses Loaded: ${verses.length}\n\n`;
+    verses.slice(0,3).forEach(v => {
+      out += `${v.ref}\n`;
+      (v.words||[]).slice(0,5).forEach(w => {
+        out += `  ${w.g} (${w.S||''}) - ${w.gls||''}\n`;
+      });
+    });
+    previewEl.textContent = out;
+  }
+
+  function buildFilename(passage){
+    const startPart = `${passage.start.c}_${passage.start.v}`;
+    const endPart = (passage.end.c === passage.start.c && passage.end.v === passage.start.v)
+      ? ''
+      : `-${passage.end.c}_${passage.end.v}`;
+    return `${passage.book}_${startPart}${endPart}.flextext`;
+  }
+
+  function esc(s){
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function buildFlexText(passage, verses){
+    // Build a simple document with one phrase per verse, similar to the desktop version
+    const title = `${passage.book} ${passage.start.c}:${passage.start.v}` +
+      ((passage.end.c !== passage.start.c || passage.end.v !== passage.start.v) ? `-${passage.end.c}:${passage.end.v}` : '');
+
+    let xml = '';
+    xml += '<?xml version="1.0" encoding="UTF-8"?>\n';
+    xml += '<document>\n';
+    xml += `  <title>${esc(title)}</title>\n`;
+    xml += `  <id>${esc(title.replace(/\s+/g,'_'))}</id>\n`;
+
+    verses.forEach(v => {
+      const segnum = `${v.c}:${v.v}`;
+      const greekText = (v.words||[]).map(w => w.g).join(' ');
+      const phraseGls = v.translation || ''; // LEB phrase-level
+      xml += '  <interlinear-text>\n';
+      xml += '    <paragraph>\n';
+      xml += '      <phrase>\n';
+      xml += `        <segnum>${esc(segnum)}</segnum>\n`;
+      xml += '        <item type="txt" lang="grc">' + esc(greekText) + '</item>\n';
+      xml += '        <item type="gls" lang="en">' + esc(phraseGls) + '</item>\n';
+      (v.words||[]).forEach(w => {
+        xml += '        <word>\n';
+        xml += '          <item type="txt" lang="grc">' + esc(w.g) + '</item>\n';
+        if(w.gls) xml += '          <item type="gls" lang="en">' + esc(w.gls) + '</item>\n';
+        xml += '        </word>\n';
+      });
+      xml += '      </phrase>\n';
+      xml += '    </paragraph>\n';
+      xml += '  </interlinear-text>\n';
+    });
+
+    xml += '</document>\n';
+    return xml;
+  }
+  </script>
+</body>
+</html>
