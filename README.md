@@ -175,6 +175,20 @@ Enable GitHub Pages:
 2) In your GitHub repo settings → Pages, set Source to “Deploy from a branch” and Folder to `/docs`.
 3) Your site will be available at `https://<owner>.github.io/<repo>/`.
 
+### Publishing (unofficial preview)
+
+For an initial unofficial preview, this repo includes settings to avoid search engine indexing until licensing is finalized:
+
+- `docs/index.html` sets `<meta name="robots" content="noindex,nofollow">`.
+- `docs/robots.txt` disallows all crawlers.
+- `docs/.nojekyll` disables Jekyll processing (helps ensure all static files are served as-is).
+
+When you’re ready to make the site discoverable, remove the `robots` meta tag and update `docs/robots.txt` to allow indexing (or delete it).
+
+Expected URL once GitHub Pages is enabled for this repo:
+
+- `https://rulingants.github.io/biblical_languages_flex/`
+
 Notes and licensing:
 - The web app uses prebuilt JSON only; it does not load SWORD modules in the browser.
 - If the JSON includes LEB phrase-level text, ensure the required LEB attribution is displayed (it is in the web UI) and that you comply with the license.
@@ -199,4 +213,4 @@ The included `bundle.sh` shows an example `pyinstaller` command. Update the `--a
     - Derived from TBESG – Tyndale Brief lexicon of Extended Strong’s for Greek. Data created for www.STEPBible.org by Tyndale House Cambridge and others (CC BY 4.0).
 
 - English translation (when enabled)
-    - Lexham English Bible (LEB). Scripture quotations are from the Lexham English Bible (LEB). Copyright © Logos Bible Software. Used with permission. See http://www.lexhamenglishbible.com/license/ for license details.
+    - Lexham English Bible (LEB). Scripture quotations are from the Lexham English Bible (LEB). Copyright © Logos Bible Software. Used under the LEB license. See http://www.lexhamenglishbible.com/license/ for license details.

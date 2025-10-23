@@ -413,8 +413,8 @@ def build_flextext_xml(verse_data: InterlinearVerse, config_map: dict) -> str:
     # Phrase-level Greek text (concatenate baseline words)
     greek_phrase = ' '.join([w.to_dict().get(baseline_key, '') for w in verse_data.words]).strip()
     ET.SubElement(phrase, 'item', type='txt', lang='grc').text = greek_phrase
-    # Verse number
-    ET.SubElement(phrase, 'item', type='segnum', lang='en').text = str(verse_data.verse)
+    # Segment number starts at 1 for single-verse export
+    ET.SubElement(phrase, 'item', type='segnum', lang='en').text = '1'
 
     # Words
     words_element = ET.SubElement(phrase, 'words')
@@ -463,14 +463,14 @@ def build_flextext_xml_for_passage(verses: list, config_map: dict) -> str:
     paragraph = ET.SubElement(paragraphs, 'paragraph')
     phrases = ET.SubElement(paragraph, 'phrases')
 
-    for v in verses:
+    for idx, v in enumerate(verses, start=1):
         phrase = ET.SubElement(phrases, 'phrase', guid=str(uuid.uuid4()))
 
         # Phrase-level baseline (full Greek text)
         greek_phrase = ' '.join([w.to_dict().get(baseline_key, '') for w in v.words]).strip()
         ET.SubElement(phrase, 'item', type='txt', lang='grc').text = greek_phrase
-        # Verse number
-        ET.SubElement(phrase, 'item', type='segnum', lang='en').text = str(v.verse)
+        # Segment number sequential starting at 1
+        ET.SubElement(phrase, 'item', type='segnum', lang='en').text = str(idx)
 
         words_element = ET.SubElement(phrase, 'words')
         for word_obj in v.words:
