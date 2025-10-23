@@ -13,6 +13,64 @@ _site/
 #Python
 __pycache__
 
+# Python bytecode and caches
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pytype/
+.venv/
+venv/
+env/
+ENV/
+
+# Build and packaging
+build/
+dist/
+*.egg-info/
+*.egg
+pip-wheel-metadata/
+
+# PyInstaller
+*.spec
+*.manifest
+*.onefile-build/
+
+# Coverage and test reports
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.tox/
+.nox/
+junit.xml
+
+# IDE/editor
+.vscode/
+.idea/
+*.code-workspace
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Archives and logs
+*.log
+*.gz
+*.zip
+*.tar
+*.tar.gz
+
+# Executables and bundles
+*.exe
+*.dll
+*.so
+*.dylib
+*.app
+*.dmg
+*.pkg
+
 # Specific ignore for GitHub Pages
 # GitHub Pages will always use its own deployed version of pages-gem 
 # This means GitHub Pages will NOT use your Gemfile.lock and therefore it is
