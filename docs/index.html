@@ -4,6 +4,15 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex,nofollow" />
+  <meta name="theme-color" content="#0b5ed7" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <link rel="manifest" href="./manifest.webmanifest" crossorigin="use-credentials" />
+  <link rel="icon" href="./icons/icon-32.png" sizes="32x32" type="image/png" />
+  <link rel="icon" href="./icons/icon-48.png" sizes="48x48" type="image/png" />
+  <link rel="icon" href="./icons/icon-192.png" sizes="192x192" type="image/png" />
+  <link rel="icon" href="./icons/favicon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
   <title>New Testament Greek FLEx Interlinear Import Tool</title>
   <style>
     body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;max-width:900px;margin:0 auto;padding:20px;background:#f7f7f7}
@@ -21,6 +30,7 @@
 </head>
 <body>
   <h1>📖 New Testament Greek FLEx Interlinear Import Tool (Web-only)</h1>
+  <noscript>This app works offline once loaded, but requires JavaScript to function.</noscript>
   <div class="card">
     <p>This web app allows you to generate an interlinearized flextext file that you can import into FieldWorks Language Explorer project (see template below) as an interlinear text. It doesn't link to lexical items, but it does include word glosses, and is immediately useable in text charting (and maybe tagging) view.</p>
     <p class="muted">
@@ -73,6 +83,38 @@
   </div>
 
   <script>
+  // Register Service Worker for offline + updates
+  (function registerSW(){
+    if ('serviceWorker' in navigator) {
+      const swUrl = new URL('./service-worker.js', location.href);
+      navigator.serviceWorker.register(swUrl, { scope: './' }).then(reg => {
+        // Check for updates periodically
+        const check = () => reg.update().catch(()=>{});
+        const sixHours = 6 * 60 * 60 * 1000;
+        setInterval(check, sixHours);
+        // Auto-activate waiting worker and reload
+        if (reg.waiting) {
+          reg.waiting.postMessage('SKIP_WAITING');
+          location.reload();
+        }
+        reg.addEventListener('updatefound', () => {
+          const nw = reg.installing;
+          if (!nw) return;
+          nw.addEventListener('statechange', () => {
+            if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+              // New version ready: activate and refresh
+              (reg.waiting || nw)?.postMessage('SKIP_WAITING');
+            }
+          });
+        });
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          // New SW has taken control
+          location.reload();
+        });
+      }).catch(err => console.warn('SW registration failed', err));
+    }
+  })();
+
   // Data layout: docs/assets/data/<Book>.json with mapping of "C:V" => { words:[{g, S, l, gls}], translation: string }
   // We load exactly one book at a time via the dropdown; references are chapter:verse or chapter:verse-chapter:verse within that book.
   const statusEl = document.getElementById('status');
