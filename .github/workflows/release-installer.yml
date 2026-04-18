@@ -45,9 +45,12 @@ jobs:
       - name: Download FLExTools
         id: flextools
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           $release = Invoke-RestMethod `
-            "https://api.github.com/repos/cdfarrow/flextools/releases/latest"
+            -Uri "https://api.github.com/repos/cdfarrow/flextools/releases/latest" `
+            -Headers @{ Authorization = "Bearer $env:GH_TOKEN" }
 
           # Find the zip asset
           $asset = $release.assets |
