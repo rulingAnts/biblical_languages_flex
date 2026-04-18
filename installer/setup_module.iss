@@ -86,7 +86,7 @@ Name: "{userprograms}\FLExTools\FLExTools"; \
     Parameters: """{localappdata}\FLExTools\FlexTools.py"""; \
     WorkingDir: "{localappdata}\FLExTools"; \
     Comment: "Run FLExTools — utilities for FieldWorks Language Explorer"; \
-    Flags: uninsneveruninstall; Check: DoInstallFLExTools
+    Flags: uninsneveruninstall
 
 [Registry]
 ; Remember the Modules dir so future upgrades pre-fill correctly
@@ -101,8 +101,9 @@ Root: HKCU; \
 Type: files; Name: "{code:GetModulesDir}\{#ModuleFile}"
 
 [Run]
-; Offer to launch FLExTools immediately after install
-Filename: "{win}\py.exe"; \
+; Offer to launch FLExTools immediately after install.
+; Uses {code:GetPyExe} so we use the same py.exe path detected during install.
+Filename: "{code:GetPyExe}"; \
     Parameters: """{localappdata}\FLExTools\FlexTools.py"""; \
     WorkingDir: "{localappdata}\FLExTools"; \
     Description: "Launch FLExTools now"; \
@@ -264,6 +265,16 @@ begin
   end;
   Result := FileExists(DestPath);
   Log('Download success: ' + BoolStr(Result));
+end;
+
+
+{ Used by [Run] section — must be a named function, not a variable reference }
+function GetPyExe(Param: String): String;
+begin
+  if PyExePath <> '' then
+    Result := PyExePath
+  else
+    Result := FindPyExe();
 end;
 
 
