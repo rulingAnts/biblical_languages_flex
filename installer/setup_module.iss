@@ -83,7 +83,7 @@ Source: "..\tools\{#ModuleFile}"; DestDir: "{code:GetModulesDir}"; \
 ; the shortcut in place when our module is removed.
 ; Check: ShortcutMissing prevents creating a duplicate on re-install.
 Name: "{userprograms}\FLExTools\FLExTools"; \
-    Filename: "{win}\py.exe"; \
+    Filename: "{code:GetPywExe}"; \
     Parameters: """{localappdata}\FLExTools\FlexTools.py"""; \
     WorkingDir: "{localappdata}\FLExTools"; \
     Comment: "Run FLExTools — utilities for FieldWorks Language Explorer"; \
@@ -104,7 +104,7 @@ Type: files; Name: "{code:GetModulesDir}\{#ModuleFile}"
 [Run]
 ; Offer to launch FLExTools immediately after install.
 ; Uses {code:GetPyExe} so we use the same py.exe path detected during install.
-Filename: "{code:GetPyExe}"; \
+Filename: "{code:GetPywExe}"; \
     Parameters: """{localappdata}\FLExTools\FlexTools.py"""; \
     WorkingDir: "{localappdata}\FLExTools"; \
     Description: "Launch FLExTools now"; \
@@ -135,7 +135,8 @@ var
   ModulesDir     : String;
   NeedsFLExTools : Boolean;  { True if FLExTools app files should be installed }
   NeedsPython    : Boolean;  { True if py.exe was not found at startup }
-  PyExePath      : String;   { Resolved path to py.exe, set by PrepareToInstall }
+  PyExePath      : String;   { Resolved path to py.exe — used for pip }
+  PywExePath     : String;   { Resolved path to pyw.exe — used to launch FLExTools (no console window) }
 
 
 { -----------------------------------------------------------------------
@@ -240,6 +241,25 @@ begin
   Log('py.exe not found');
 end;
 
+// pyw.exe is the Windows GUI launcher — runs Python without a console window.
+// It is installed alongside py.exe. Falls back to py.exe if not found.
+function FindPywExe(): String;
+var
+  Candidate: String;
+begin
+  Result := '';
+
+  Candidate := ExpandConstant('{win}\pyw.exe');
+  if FileExists(Candidate) then begin Log('pyw.exe found: ' + Candidate); Result := Candidate; Exit; end;
+
+  Candidate := ExpandConstant('{localappdata}\Programs\Python\Launcher\pyw.exe');
+  if FileExists(Candidate) then begin Log('pyw.exe found: ' + Candidate); Result := Candidate; Exit; end;
+
+  // Fall back to py.exe — console window will flash briefly but FLExTools will still launch
+  Log('pyw.exe not found, falling back to py.exe');
+  Result := FindPyExe();
+end;
+
 
 { -----------------------------------------------------------------------
   File download via PowerShell Net.WebClient (hidden, no console window)
@@ -276,13 +296,22 @@ begin
   Log('FLExTools shortcut missing (will create): ' + BoolStr(Result));
 end;
 
-{ Used by [Run] section — must be a named function, not a variable reference }
+{ Used by [Run]/[Icons] — returns py.exe path for pip operations }
 function GetPyExe(Param: String): String;
 begin
   if PyExePath <> '' then
     Result := PyExePath
   else
     Result := FindPyExe();
+end;
+
+{ Used by [Run]/[Icons] for launching FLExTools — pyw.exe avoids console flash }
+function GetPywExe(Param: String): String;
+begin
+  if PywExePath <> '' then
+    Result := PywExePath
+  else
+    Result := FindPywExe();
 end;
 
 
@@ -382,6 +411,7 @@ begin
 
   if not NeedsPython then begin
     PyExePath := FindPyExe();
+    PywExePath := FindPywExe();
     Exit;
   end;
 
@@ -428,6 +458,8 @@ begin
   end;
 
   Log('Python ready: ' + PyExePath);
+  PywExePath := FindPywExe();
+  Log('pyw.exe for launching: ' + PywExePath);
   NeedsPython := False;
 end;
 
