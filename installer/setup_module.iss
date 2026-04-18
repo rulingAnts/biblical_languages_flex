@@ -210,8 +210,9 @@ function FLExToolsIsInstalled(): Boolean;
 var
   Marker: String;
 begin
-  // FlexTools.py is the main entry point — if it exists, FLExTools is properly installed.
-  Marker := ExpandConstant('{localappdata}\FLExTools\FlexTools.py');
+  // scripts\RunFlexTools.py is the actual Python entry point for FLExTools
+  // (FlexTools.vbs -> scripts\FlexToolsCommands.vbs RUN -> py scripts\RunFlexTools.py).
+  Marker := ExpandConstant('{localappdata}\FLExTools\scripts\RunFlexTools.py');
   Result := FileExists(Marker);
   Log('FLExTools installed: ' + BoolStr(Result) + '  (marker: ' + Marker + ')');
 end;

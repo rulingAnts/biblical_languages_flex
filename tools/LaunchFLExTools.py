@@ -5,20 +5,18 @@ Checks whether FieldWorks Language Explorer (FLEx) is running before
 opening FLExTools, and shows a clear warning if it is.  FLExTools opens
 the FLEx project database directly; FLEx must be fully closed first.
 
-This script is installed alongside FLExTools and is the target of the
-Start Menu shortcut and installer finish-page "Launch FLExTools" option.
+FLExTools entry point: %LOCALAPPDATA%\FLExTools\scripts\RunFlexTools.py
+(FlexTools.vbs -> scripts\FlexToolsCommands.vbs RUN -> py scripts\RunFlexTools.py)
+We invoke RunFlexTools.py directly so cmd.exe / VBScript is never needed.
 """
 import ctypes
 import os
 import subprocess
 import sys
 
-# Always locate FLExTools via LOCALAPPDATA — do not rely on __file__
-# resolution, which can vary depending on how the launcher is invoked.
 FLEXTOOLS_DIR    = os.path.join(os.environ['LOCALAPPDATA'], 'FLExTools')
-FLEXTOOLS_SCRIPT = os.path.join(FLEXTOOLS_DIR, 'FlexTools.py')
+FLEXTOOLS_SCRIPT = os.path.join(FLEXTOOLS_DIR, 'scripts', 'RunFlexTools.py')
 
-# Windows MessageBox flags
 MB_OK          = 0x00
 MB_ICONWARNING = 0x30
 MB_ICONERROR   = 0x10
@@ -36,7 +34,7 @@ def _flex_is_running():
         )
         return 'FieldWorks.exe' in result.stdout
     except Exception:
-        return False  # If we can't check, proceed anyway
+        return False
 
 
 def main():
@@ -52,14 +50,13 @@ def main():
         return
 
     if not os.path.isfile(FLEXTOOLS_SCRIPT):
-        # Build a directory listing to help diagnose the problem
         try:
             contents = '\n'.join(sorted(os.listdir(FLEXTOOLS_DIR)))
         except Exception:
             contents = '(could not read directory)'
         _msgbox(
             'FLExTools Not Found',
-            'Could not find FlexTools.py at:\n'
+            'Could not find RunFlexTools.py at:\n'
             + FLEXTOOLS_SCRIPT + '\n\n'
             'Contents of ' + FLEXTOOLS_DIR + ':\n'
             + contents + '\n\n'
@@ -68,7 +65,9 @@ def main():
         )
         return
 
-    # Launch FLExTools using the same interpreter (pyw — no console window)
+    # Run via the same interpreter (pyw.exe — no console window).
+    # Working dir must be the FLExTools root so relative imports in
+    # RunFlexTools.py (e.g. "from Version import Title") resolve correctly.
     subprocess.Popen([sys.executable, FLEXTOOLS_SCRIPT], cwd=FLEXTOOLS_DIR)
 
 
