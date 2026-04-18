@@ -173,30 +173,20 @@ end;
 
 function GetFLExInstallDir(): String;
 var
-  InstallDir, PF64: String;
+  PF64: String;
 begin
   Result := '';
 
-  { Try 64-bit registry view first (FLEx 9.x is a 64-bit app) }
-  if RegQueryStringValue(HKLM or $01000000, 'SOFTWARE\SIL\FieldWorks', 'RootDir', InstallDir) and
-     (InstallDir <> '') then
-    begin Log('FLEx dir from 64-bit registry: ' + InstallDir); Result := InstallDir; Exit; end;
-  { Try 32-bit registry view }
-  if RegQueryStringValue(HKLM, 'SOFTWARE\SIL\FieldWorks', 'RootDir', InstallDir) and
-     (InstallDir <> '') then
-    begin Log('FLEx dir from 32-bit registry: ' + InstallDir); Result := InstallDir; Exit; end;
-
-  { Filesystem fallback.
-    On 64-bit Windows, a 32-bit process sees {pf} as "Program Files (x86)".
-    ProgramW6432 is the env var that always points to the native 64-bit
-    Program Files folder, even from a 32-bit process. }
+  { FLEx 9.x is a 64-bit app. On a 32-bit Inno Setup process, {pf} resolves
+    to "Program Files (x86)", so we use the ProgramW6432 environment variable,
+    which always returns the native 64-bit Program Files path on 64-bit Windows. }
   PF64 := GetEnv('ProgramW6432');
   if PF64 <> '' then begin
     Result := ScanForFLExUnder(PF64 + '\SIL\');
     if Result <> '' then begin Log('FLEx found under ProgramW6432: ' + Result); Exit; end;
   end;
 
-  { Also try the path {pf} resolves to for this process (may be x86 folder) }
+  { Fallbacks for 32-bit Windows or unusual install locations }
   Result := ScanForFLExUnder(ExpandConstant('{pf}\SIL\'));
   if Result <> '' then begin Log('FLEx found under {pf}: ' + Result); Exit; end;
 
