@@ -57,9 +57,11 @@ UninstallDisplayName={#AppName}
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Files]
-; FLExTools zip — extracted to temp during install, deleted afterward
-; (FLExTools' own InstallOrUpdate.vbs manages the actual installation)
-Source: "FlexTools.zip"; DestDir: "{tmp}"; Flags: deleteafterinstall
+; FLExTools application files (extracted from the release zip at CI build time).
+; Copied only when FLExTools is not already installed (Check: DoInstallFLExTools).
+; The flextoolslib Python package is installed separately at runtime via pip.
+Source: "FlexToolsFiles\*"; DestDir: "{localappdata}\FLExTools"; \
+    Flags: recursesubdirs ignoreversion; Check: DoInstallFLExTools
 
 ; FLExTools LICENSE — required by LGPL 2.1 for redistribution
 Source: "FlexTools_LICENSE.txt"; DestDir: "{app}"; Flags: ignoreversion
@@ -174,12 +176,19 @@ end;
 
 function FLExToolsIsInstalled(): Boolean;
 var
-  Base: String;
+  Marker: String;
 begin
-  Base := ExpandConstant('{localappdata}\FLExTools');
-  { FlexToolsLib is the core library — its presence means FLExTools is installed }
-  Result := DirExists(Base + '\FlexToolsLib');
-  Log('FLExTools FlexToolsLib dir: ' + Base + '\FlexToolsLib  exists: ' + BoolStr(Result));
+  { scripts\requirements.txt is part of the FLExTools app files bundle;
+    its presence means the app files have been installed. }
+  Marker := ExpandConstant('{localappdata}\FLExTools\scripts\requirements.txt');
+  Result := FileExists(Marker);
+  Log('FLExTools app files installed: ' + BoolStr(Result) + '  (marker: ' + Marker + ')');
+end;
+
+{ Used as Check: in the [Files] section to conditionally copy FLExTools files }
+function DoInstallFLExTools(): Boolean;
+begin
+  Result := NeedsFLExTools;
 end;
 
 
@@ -216,53 +225,6 @@ begin
 end;
 
 
-{ -----------------------------------------------------------------------
-  FLExTools installation — direct file copy, no VBS or cmd.exe needed
-  ----------------------------------------------------------------------- }
-
-procedure InstallFLExTools();
-var
-  ZipPath, ExtractDir, SourceDir, DestDir: String;
-  ResultCode: Integer;
-begin
-  Log('Installing FLExTools from bundled zip...');
-  ZipPath    := ExpandConstant('{tmp}\FlexTools.zip');
-  ExtractDir := ExpandConstant('{tmp}\FlexToolsInstall');
-  DestDir    := ExpandConstant('{localappdata}\FLExTools');
-
-  Log('Zip path: ' + ZipPath + '  exists: ' + BoolStr(FileExists(ZipPath)));
-  if not FileExists(ZipPath) then begin
-    MsgBox('Could not find the bundled FLExTools package. Please install FLExTools manually from:'
-      + #13#10 + 'https://github.com/cdfarrow/flextools/releases',
-      mbError, MB_OK);
-    Exit;
-  end;
-
-  { Step 1: extract zip }
-  Exec('powershell.exe',
-    '-NoProfile -NonInteractive -Command ' +
-    '"Expand-Archive -LiteralPath ''' + ZipPath +
-    ''' -DestinationPath ''' + ExtractDir + ''' -Force"',
-    '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-  Log('Expand-Archive exit code: ' + IntToStr(ResultCode));
-
-  { The zip extracts to a FlexTools\ subfolder; fall back to root if flat }
-  SourceDir := ExtractDir + '\FlexTools';
-  if not DirExists(SourceDir) then
-    SourceDir := ExtractDir;
-  Log('Source dir: ' + SourceDir + '  exists: ' + BoolStr(DirExists(SourceDir)));
-
-  { Step 2: copy all FLExTools files directly — bypass unreliable VBS }
-  ForceDirectories(DestDir);
-  Exec('powershell.exe',
-    '-NoProfile -NonInteractive -Command ' +
-    '"Copy-Item -Path ''' + SourceDir + '\*'' ' +
-    '-Destination ''' + DestDir + ''' -Recurse -Force"',
-    '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-  Log('Copy-Item exit code: ' + IntToStr(ResultCode));
-  Log('FlexToolsLib present after install: ' +
-      BoolStr(DirExists(DestDir + '\FlexToolsLib')));
-end;
 
 
 { -----------------------------------------------------------------------
@@ -334,6 +296,8 @@ begin
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
+var
+  ResultCode: Integer;
 begin
   if CurStep = ssInstall then begin
     { Ensure Modules dir exists before [Files] copies our module into it }
@@ -344,12 +308,20 @@ begin
   end;
 
   if CurStep = ssPostInstall then begin
-    { Install FLExTools here — {tmp} files are available until installer exits,
-      so the zip is present at ssPostInstall even though it arrives via [Files] }
-    if NeedsFLExTools then begin
-      WizardForm.StatusLabel.Caption := 'Installing FLExTools...';
-      InstallFLExTools();
-    end;
+    { Install flextoolslib via the Python Launcher (py.exe).
+      Runs hidden — no console window needed, so broken display doesn't matter.
+      This is exactly what FLExTools' InstallOrUpdate.vbs does, minus cmd.exe. }
+    WizardForm.StatusLabel.Caption := 'Installing flextoolslib Python package...';
+    Log('Running: py -m pip install --upgrade flextoolslib');
+    Exec('py', '-m pip install --upgrade flextoolslib',
+         '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    Log('pip install exit code: ' + IntToStr(ResultCode));
+    if ResultCode <> 0 then
+      MsgBox('Could not install flextoolslib automatically.' + #13#10#13#10
+        + 'Please open a command prompt and run:' + #13#10
+        + '    py -m pip install flextoolslib' + #13#10#13#10
+        + 'If "py" is not found, install Python from https://python.org first.',
+        mbError, MB_OK);
   end;
 end;
 

@@ -80,7 +80,29 @@ jobs:
           "version=$semver" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
       # ------------------------------------------------------------------ #
-      # 3. Install Inno Setup 6 and compile the installer                   #
+      # 3. Extract FLExTools zip so Inno Setup can bundle loose files       #
+      #    This avoids any runtime PowerShell/cmd dependency on the user's  #
+      #    machine.  The pip install of flextoolslib still happens at        #
+      #    install time via the Python Launcher (py.exe), which runs hidden. #
+      # ------------------------------------------------------------------ #
+      - name: Extract FLExTools for bundling
+        shell: pwsh
+        run: |
+          Expand-Archive -Path "installer\FlexTools.zip" `
+            -DestinationPath "installer\FlexToolsExtracted" -Force
+          # Zip extracts to a FlexTools\ subfolder; normalise to FlexToolsFiles\
+          if (Test-Path "installer\FlexToolsExtracted\FlexTools") {
+            Move-Item "installer\FlexToolsExtracted\FlexTools" "installer\FlexToolsFiles"
+            Remove-Item -Recurse "installer\FlexToolsExtracted"
+          } else {
+            Rename-Item "installer\FlexToolsExtracted" "installer\FlexToolsFiles"
+          }
+          Remove-Item "installer\FlexTools.zip"
+          Write-Host "FLExTools files ready at installer\FlexToolsFiles"
+          Get-ChildItem "installer\FlexToolsFiles" | Select-Object -ExpandProperty Name
+
+      # ------------------------------------------------------------------ #
+      # 4. Install Inno Setup 6 and compile the installer                   #
       # ------------------------------------------------------------------ #
       - name: Install Inno Setup 6
         run: choco install innosetup --yes --no-progress
