@@ -109,17 +109,7 @@ Filename: "{win}\py.exe"; \
     Flags: nowait postinstall skipifsilent unchecked
 
 [Messages]
-FinishedLabel=Setup is complete!%n%n\
-How to use the Split Slash Glosses module:%n%n\
-  1. Import your passage into FLEx using the NT Greek Interlinear Import Tool.%n\
-  2. CLOSE FLEx completely (FLExTools opens the project database directly;%n\
-     FLEx must not be running at the same time).%n\
-  3. Launch FLExTools from the Start Menu (Start > FLExTools > FLExTools).%n\
-  4. In FLExTools, select your project from the drop-down at the top.%n\
-  5. Find "Split Slash Glosses" in the module list and click Run.%n\
-  6. Close FLExTools and reopen FLEx to see the changes.%n%n\
-The module splits slash-separated glosses (e.g. "in/on/at") into%n\
-individual unapproved analyses, marked blue for your review.
+FinishedLabel=Setup is complete!%n%nHow to use the Split Slash Glosses module:%n%n  1. Import your passage into FLEx using the NT Greek Interlinear Import Tool.%n  2. CLOSE FLEx completely (FLExTools opens the project database directly; FLEx must not be running at the same time).%n  3. Launch FLExTools from the Start Menu (Start > FLExTools > FLExTools).%n  4. In FLExTools, select your project from the drop-down at the top.%n  5. Find "Split Slash Glosses" in the module list and click Run.%n  6. Close FLExTools, then reopen FLEx to see the changes.%n%nThe module splits slash-separated glosses (e.g. "in/on/at") into individual unapproved analyses, marked blue for your review.
 
 ; -------------------------------------------------------------------------
 ; Code
