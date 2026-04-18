@@ -96,6 +96,12 @@ const
   { Version of FLExTools bundled with this installer — set at compile time }
   BundledFLExToolsVersion = '{#FLEXTOOLS_VERSION}';
 
+{ BoolToStr is not a built-in in Inno Setup Pascal }
+function BoolStr(B: Boolean): String;
+begin
+  if B then Result := 'True' else Result := 'False';
+end;
+
 var
   ModulesDirPage : TInputDirWizardPage;
   ModulesDir     : String;
@@ -161,7 +167,7 @@ end;
 function FLExIsInstalled(): Boolean;
 begin
   Result := GetFLExInstallDir() <> '';
-  Log('FLEx installed: ' + BoolToStr(Result));
+  Log('FLEx installed: ' + BoolStr(Result));
 end;
 
 
@@ -179,15 +185,12 @@ begin
   { Check known FLEx Python locations first }
   FLExDir := GetFLExInstallDir();
   if FLExDir <> '' then begin
-    for Candidate in [FLExDir + '\Python\python.exe',
-                      FLExDir + '\Python3\python.exe',
-                      FLExDir + '\lib\python\python.exe'] do begin
-      if FileExists(Candidate) then begin
-        Log('Found Python at FLEx dir: ' + Candidate);
-        Result := Candidate;
-        Exit;
-      end;
-    end;
+    Candidate := FLExDir + '\Python\python.exe';
+    if FileExists(Candidate) then begin Log('Found Python: ' + Candidate); Result := Candidate; Exit; end;
+    Candidate := FLExDir + '\Python3\python.exe';
+    if FileExists(Candidate) then begin Log('Found Python: ' + Candidate); Result := Candidate; Exit; end;
+    Candidate := FLExDir + '\lib\python\python.exe';
+    if FileExists(Candidate) then begin Log('Found Python: ' + Candidate); Result := Candidate; Exit; end;
   end;
 
   { Fall back to system Python via where.exe }
@@ -222,8 +225,8 @@ begin
       Output := Output + Trim(Lines[I]) + ' ';
   Output := Trim(Output);
   DeleteFile(TempFile);
-  Log('RunAndCapture "' + ExeName + ' ' + Params + '" → ' +
-      BoolToStr(Result) + ' output: ' + Output);
+  Log('RunAndCapture "' + ExeName + ' ' + Params + '" -> ' +
+      BoolStr(Result) + ' output: ' + Output);
 end;
 
 
@@ -259,7 +262,7 @@ begin
   RunAndCapture(PythonExe,
     '-c "import flextoolslib; print(''ok'')"', Output);
   Result := Pos('ok', Output) > 0;
-  Log('FLExTools importable: ' + BoolToStr(Result));
+  Log('FLExTools importable: ' + BoolStr(Result));
 end;
 
 
@@ -279,16 +282,18 @@ begin
       begin Result := Candidate; Log('Modules dir from registry: ' + Candidate); Exit; end;
 
   { Common FLExTools install locations }
-  for Candidate in [
-      ExpandConstant('{localappdata}\FLExTools\Modules'),
-      ExpandConstant('{localappdata}\Programs\FLExTools\Modules'),
-      ExpandConstant('{pf}\FLExTools\Modules'),
-      ExpandConstant('{pf32}\FLExTools\Modules'),
-      ExpandConstant('{pf}\SIL\FieldWorks\FLExTools\Modules'),
-      ExpandConstant('{pf32}\SIL\FieldWorks\FLExTools\Modules')] do begin
-    if DirExists(Candidate) then
-      begin Log('Detected Modules dir: ' + Candidate); Result := Candidate; Exit; end;
-  end;
+  Candidate := ExpandConstant('{localappdata}\FLExTools\Modules');
+  if DirExists(Candidate) then begin Log('Detected: ' + Candidate); Result := Candidate; Exit; end;
+  Candidate := ExpandConstant('{localappdata}\Programs\FLExTools\Modules');
+  if DirExists(Candidate) then begin Log('Detected: ' + Candidate); Result := Candidate; Exit; end;
+  Candidate := ExpandConstant('{pf}\FLExTools\Modules');
+  if DirExists(Candidate) then begin Log('Detected: ' + Candidate); Result := Candidate; Exit; end;
+  Candidate := ExpandConstant('{pf32}\FLExTools\Modules');
+  if DirExists(Candidate) then begin Log('Detected: ' + Candidate); Result := Candidate; Exit; end;
+  Candidate := ExpandConstant('{pf}\SIL\FieldWorks\FLExTools\Modules');
+  if DirExists(Candidate) then begin Log('Detected: ' + Candidate); Result := Candidate; Exit; end;
+  Candidate := ExpandConstant('{pf32}\SIL\FieldWorks\FLExTools\Modules');
+  if DirExists(Candidate) then begin Log('Detected: ' + Candidate); Result := Candidate; Exit; end;
 
   Log('FLExTools Modules dir not detected');
 end;
