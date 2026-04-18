@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>Manual Install — FLEx Gloss Splitter</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;max-width:860px;margin:0 auto;padding:20px;background:#f7f7f7}
+    h1{color:#0b5ed7}
+    h2{color:#333;border-top:2px solid #e4e4e4;padding-top:1rem;margin-top:2rem}
+    h3{color:#444;margin-top:1.5rem}
+    .card{background:#fff;border:1px solid #e4e4e4;border-radius:8px;padding:20px 24px;margin:16px 0;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+    code{background:#f0f0f0;padding:2px 6px;border-radius:3px;font-family:monospace}
+    pre{background:#f0f0f0;padding:12px 16px;border-radius:6px;overflow-x:auto;font-family:monospace;font-size:.93em}
+    a{color:#0b5ed7}
+    .muted{color:#666;font-size:.9em}
+    .note{background:#fff8e1;border-left:4px solid #f9a825;padding:10px 14px;border-radius:0 6px 6px 0;margin:1rem 0}
+    ol{line-height:1.8}
+    li{margin-bottom:.5rem}
+    .back{display:inline-block;margin-bottom:1.5rem;color:#0b5ed7;text-decoration:none}
+    .back::before{content:"← "}
+  </style>
+</head>
+<body>
+
+  <a class="back" href="index.html">Back to main page</a>
+
+  <h1>Manual Install — Advanced Users</h1>
+
+  <p>The <a href="https://github.com/rulingAnts/biblical_languages_flex/releases/latest/download/FLExGlossSplitterModuleSetup.exe">Windows installer (.exe)</a> handles everything automatically and is recommended for most users.
+  This page is for users who prefer to install components manually, are running on a non-standard setup, or want to understand exactly what the installer does.</p>
+
+  <div class="card">
+
+    <h2 style="margin-top:0;border-top:none;padding-top:0;">What you need</h2>
+
+    <ol>
+      <li><strong>FLEx (FieldWorks Language Explorer)</strong> — the linguistic database environment.<br>
+          <a href="https://software.sil.org/fieldworks/" target="_blank" rel="noopener">Download from SIL</a> (Windows only).</li>
+      <li><strong>Python 3.x</strong> with the Python Launcher (<code>py.exe</code>).<br>
+          <a href="https://www.python.org/downloads/" target="_blank" rel="noopener">Download from python.org</a>.
+          When installing, check <strong>"Add Python to PATH"</strong> and ensure the <strong>Python Launcher</strong> option is selected (it is by default).</li>
+      <li><strong>flextoolslib</strong> — the Python package that bridges Python to FLEx's C# data layer.<br>
+          Install via pip (see below).</li>
+      <li><strong>FLExTools application files</strong> — the GUI launcher that runs FLEx utility modules.<br>
+          <a href="https://github.com/cdfarrow/flextools/releases/latest" target="_blank" rel="noopener">Download the latest release zip from GitHub</a>.</li>
+      <li><strong>Split_Slash_Glosses.py</strong> — our module file.<br>
+          <a href="https://github.com/rulingAnts/biblical_languages_flex/releases/latest/download/Split_Slash_Glosses.py">Download from the latest release</a>.</li>
+    </ol>
+
+    <h2>Step 1 — Install Python</h2>
+
+    <p>Download and run the Python installer. On the first screen:</p>
+    <ul>
+      <li>Check <strong>"Add Python to PATH"</strong></li>
+      <li>Leave <strong>"Install launcher for all users"</strong> checked (default)</li>
+    </ul>
+    <p>Verify the install by opening a command prompt and running:</p>
+    <pre>py --version</pre>
+    <p>You should see something like <code>Python 3.13.3</code>.</p>
+
+    <h2>Step 2 — Install flextoolslib</h2>
+
+    <p>Open a command prompt and run:</p>
+    <pre>py -m pip install flextoolslib</pre>
+    <p>This installs the Python package that lets FLExTools communicate with FLEx's internal data layer (LCM). It is downloaded from PyPI and has no other system dependencies.</p>
+
+    <h2>Step 3 — Install FLExTools application files</h2>
+
+    <ol>
+      <li>Download the latest <code>FlexTools_*.zip</code> from the
+          <a href="https://github.com/cdfarrow/flextools/releases/latest" target="_blank" rel="noopener">FLExTools releases page</a>.</li>
+      <li>Extract the zip. Inside you will find a <code>FlexTools\</code> folder.</li>
+      <li>Copy the <strong>contents</strong> of that <code>FlexTools\</code> folder to:
+          <pre>%LOCALAPPDATA%\FLExTools\</pre>
+          (Paste that path into the Windows Explorer address bar to navigate there.
+          Create the <code>FLExTools</code> folder if it does not exist.)</li>
+      <li>The result should look like:
+          <pre>%LOCALAPPDATA%\FLExTools\
+  FlexTools.py
+  scripts\
+  Modules\
+  ...</pre>
+      </li>
+    </ol>
+
+    <div class="note">
+      <strong>Note:</strong> FLExTools does not have a traditional installer of its own — it is just a folder of Python files. The GUI is launched by running <code>FlexTools.py</code> with the Python Launcher (see Step 5).
+    </div>
+
+    <h2>Step 4 — Install the Split Slash Glosses module</h2>
+
+    <ol>
+      <li><a href="https://github.com/rulingAnts/biblical_languages_flex/releases/latest/download/Split_Slash_Glosses.py">Download Split_Slash_Glosses.py</a>.</li>
+      <li>Copy it into your FLExTools <code>Modules</code> folder:
+          <pre>%LOCALAPPDATA%\FLExTools\Modules\</pre>
+          (Create the <code>Modules</code> folder if it does not exist.)</li>
+    </ol>
+
+    <h2>Step 5 — Create a shortcut to launch FLExTools (optional but recommended)</h2>
+
+    <p>FLExTools is launched by running:</p>
+    <pre>py "%LOCALAPPDATA%\FLExTools\FlexTools.py"</pre>
+
+    <p>To make this easier, create a Start Menu shortcut:</p>
+    <ol>
+      <li>Right-click the Desktop and choose <strong>New &rarr; Shortcut</strong>.</li>
+      <li>For the location, enter:
+          <pre>%windir%\py.exe "%LOCALAPPDATA%\FLExTools\FlexTools.py"</pre>
+      </li>
+      <li>Name it <strong>FLExTools</strong> and finish.</li>
+      <li>Optionally move it to <code>%APPDATA%\Microsoft\Windows\Start Menu\Programs\</code> to appear in the Start Menu.</li>
+    </ol>
+
+    <h2>Step 6 — Use the module</h2>
+
+    <div class="note">
+      <strong>Important:</strong> FLExTools opens the FLEx project database directly. FLEx must be <strong>completely closed</strong> before launching FLExTools, and reopened afterward to see the changes.
+    </div>
+
+    <ol>
+      <li>Import your passage into FLEx using the
+          <a href="index.html">NT Greek Interlinear Import Tool</a>.</li>
+      <li><strong>Close FLEx.</strong></li>
+      <li>Launch FLExTools (via the shortcut or by running <code>py "%LOCALAPPDATA%\FLExTools\FlexTools.py"</code>).</li>
+      <li>In FLExTools, select your project from the drop-down at the top.</li>
+      <li>Find <strong>Split Slash Glosses</strong> in the module list and click <strong>Run</strong>.</li>
+      <li>Close FLExTools, then reopen FLEx to see the updated glosses.</li>
+    </ol>
+
+    <h2>Uninstalling</h2>
+
+    <p>To remove the module, delete <code>Split_Slash_Glosses.py</code> from the <code>Modules</code> folder.</p>
+    <p>To remove FLExTools, delete the <code>%LOCALAPPDATA%\FLExTools\</code> folder and run:</p>
+    <pre>py -m pip uninstall flextoolslib</pre>
+    <p>To remove Python, use <strong>Settings &rarr; Apps</strong> and uninstall the Python entry.</p>
+    <p>To remove FLEx, use <strong>Settings &rarr; Apps</strong> and uninstall FieldWorks.</p>
+
+  </div>
+
+  <p class="muted" style="text-align:center;margin-top:2rem;">
+    <a href="index.html">Back to main page</a> &nbsp;|&nbsp;
+    <a href="https://github.com/rulingAnts/biblical_languages_flex" target="_blank" rel="noopener">GitHub repository</a>
+  </p>
+
+</body>
+</html>
