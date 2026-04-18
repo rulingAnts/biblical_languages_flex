@@ -13,6 +13,11 @@ import os
 import subprocess
 import sys
 
+# Always locate FLExTools via LOCALAPPDATA — do not rely on __file__
+# resolution, which can vary depending on how the launcher is invoked.
+FLEXTOOLS_DIR    = os.path.join(os.environ['LOCALAPPDATA'], 'FLExTools')
+FLEXTOOLS_SCRIPT = os.path.join(FLEXTOOLS_DIR, 'FlexTools.py')
+
 # Windows MessageBox flags
 MB_OK          = 0x00
 MB_ICONWARNING = 0x30
@@ -46,21 +51,25 @@ def main():
         )
         return
 
-    here = os.path.dirname(os.path.abspath(__file__))
-    flextools = os.path.join(here, 'FlexTools.py')
-
-    if not os.path.exists(flextools):
+    if not os.path.isfile(FLEXTOOLS_SCRIPT):
+        # Build a directory listing to help diagnose the problem
+        try:
+            contents = '\n'.join(sorted(os.listdir(FLEXTOOLS_DIR)))
+        except Exception:
+            contents = '(could not read directory)'
         _msgbox(
             'FLExTools Not Found',
-            'Could not find FlexTools.py at:\n' + flextools + '\n\n'
-            'FLExTools may not be installed correctly.\n'
-            'Expected location: ' + here,
+            'Could not find FlexTools.py at:\n'
+            + FLEXTOOLS_SCRIPT + '\n\n'
+            'Contents of ' + FLEXTOOLS_DIR + ':\n'
+            + contents + '\n\n'
+            'Try re-running the FLEx Gloss Splitter installer.',
             MB_OK | MB_ICONERROR
         )
         return
 
-    # Launch FLExTools using the same interpreter (pythonw — no console window)
-    subprocess.Popen([sys.executable, flextools], cwd=here)
+    # Launch FLExTools using the same interpreter (pyw — no console window)
+    subprocess.Popen([sys.executable, FLEXTOOLS_SCRIPT], cwd=FLEXTOOLS_DIR)
 
 
 if __name__ == '__main__':
