@@ -177,9 +177,9 @@ var
 begin
   Result := '';
 
-  { FLEx 9.x is a 64-bit app. On a 32-bit Inno Setup process, {pf} resolves
-    to "Program Files (x86)", so we use the ProgramW6432 environment variable,
-    which always returns the native 64-bit Program Files path on 64-bit Windows. }
+  // FLEx 9.x is 64-bit. On a 32-bit Inno Setup process the pf constant points
+  // to "Program Files (x86)", so use ProgramW6432 — the env var that always
+  // returns the native 64-bit Program Files path, even from a 32-bit process.
   PF64 := GetEnv('ProgramW6432');
   if PF64 <> '' then begin
     Result := ScanForFLExUnder(PF64 + '\SIL\');
