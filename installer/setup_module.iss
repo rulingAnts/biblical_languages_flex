@@ -49,6 +49,7 @@ OutputBaseFilename=FLExGlossSplitterModuleSetup
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
+SetupLogging=yes
 
 UninstallDisplayName={#AppName}
 
