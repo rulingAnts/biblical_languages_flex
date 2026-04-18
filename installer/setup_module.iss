@@ -177,9 +177,9 @@ var
   Base: String;
 begin
   Base := ExpandConstant('{localappdata}\FLExTools');
-  { Require the Modules subdirectory — a bare folder isn't a working install }
-  Result := DirExists(Base + '\Modules');
-  Log('FLExTools base: ' + Base + '  Modules exists: ' + BoolStr(Result));
+  { FlexToolsLib is the core library — its presence means FLExTools is installed }
+  Result := DirExists(Base + '\FlexToolsLib');
+  Log('FLExTools FlexToolsLib dir: ' + Base + '\FlexToolsLib  exists: ' + BoolStr(Result));
 end;
 
 
@@ -217,17 +217,18 @@ end;
 
 
 { -----------------------------------------------------------------------
-  FLExTools installation (via its own InstallOrUpdate.vbs)
+  FLExTools installation — direct file copy, no VBS or cmd.exe needed
   ----------------------------------------------------------------------- }
 
 procedure InstallFLExTools();
 var
-  ZipPath, ExtractDir, VBSPath: String;
+  ZipPath, ExtractDir, SourceDir, DestDir: String;
   ResultCode: Integer;
 begin
   Log('Installing FLExTools from bundled zip...');
   ZipPath    := ExpandConstant('{tmp}\FlexTools.zip');
   ExtractDir := ExpandConstant('{tmp}\FlexToolsInstall');
+  DestDir    := ExpandConstant('{localappdata}\FLExTools');
 
   Log('Zip path: ' + ZipPath + '  exists: ' + BoolStr(FileExists(ZipPath)));
   if not FileExists(ZipPath) then begin
@@ -237,30 +238,30 @@ begin
     Exit;
   end;
 
-  { Extract zip via PowerShell directly — no cmd.exe required }
+  { Step 1: extract zip }
   Exec('powershell.exe',
-    '-NoProfile -NonInteractive -Command "Expand-Archive -LiteralPath ''' +
-    ZipPath + ''' -DestinationPath ''' + ExtractDir + ''' -Force"',
+    '-NoProfile -NonInteractive -Command ' +
+    '"Expand-Archive -LiteralPath ''' + ZipPath +
+    ''' -DestinationPath ''' + ExtractDir + ''' -Force"',
     '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
   Log('Expand-Archive exit code: ' + IntToStr(ResultCode));
 
-  { Accept both FlexTools\InstallOrUpdate.vbs and a flat layout }
-  VBSPath := ExtractDir + '\FlexTools\InstallOrUpdate.vbs';
-  if not FileExists(VBSPath) then
-    VBSPath := ExtractDir + '\InstallOrUpdate.vbs';
-  Log('VBS path: ' + VBSPath + '  exists: ' + BoolStr(FileExists(VBSPath)));
+  { The zip extracts to a FlexTools\ subfolder; fall back to root if flat }
+  SourceDir := ExtractDir + '\FlexTools';
+  if not DirExists(SourceDir) then
+    SourceDir := ExtractDir;
+  Log('Source dir: ' + SourceDir + '  exists: ' + BoolStr(DirExists(SourceDir)));
 
-  if not FileExists(VBSPath) then begin
-    MsgBox('Could not install FLExTools automatically. Please install FLExTools manually from:'
-      + #13#10 + 'https://github.com/cdfarrow/flextools/releases',
-      mbError, MB_OK);
-    Exit;
-  end;
-
-  Log('Running FLExTools InstallOrUpdate.vbs...');
-  Exec('wscript.exe', '"' + VBSPath + '"',
-       ExtractFileDir(VBSPath), SW_SHOWNORMAL, ewWaitUntilTerminated, ResultCode);
-  Log('InstallOrUpdate.vbs exit code: ' + IntToStr(ResultCode));
+  { Step 2: copy all FLExTools files directly — bypass unreliable VBS }
+  ForceDirectories(DestDir);
+  Exec('powershell.exe',
+    '-NoProfile -NonInteractive -Command ' +
+    '"Copy-Item -Path ''' + SourceDir + '\*'' ' +
+    '-Destination ''' + DestDir + ''' -Recurse -Force"',
+    '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  Log('Copy-Item exit code: ' + IntToStr(ResultCode));
+  Log('FlexToolsLib present after install: ' +
+      BoolStr(DirExists(DestDir + '\FlexToolsLib')));
 end;
 
 
@@ -334,20 +335,20 @@ end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
-  { Install / upgrade FLExTools just before our files are copied }
   if CurStep = ssInstall then begin
+    { Ensure Modules dir exists before [Files] copies our module into it }
+    if not DirExists(ModulesDir) then begin
+      Log('Creating Modules dir: ' + ModulesDir);
+      ForceDirectories(ModulesDir);
+    end;
+  end;
+
+  if CurStep = ssPostInstall then begin
+    { Install FLExTools here — {tmp} files are available until installer exits,
+      so the zip is present at ssPostInstall even though it arrives via [Files] }
     if NeedsFLExTools then begin
       WizardForm.StatusLabel.Caption := 'Installing FLExTools...';
       InstallFLExTools();
-      { Re-detect Modules dir in case FLExTools installed somewhere unexpected }
-      if not DirExists(ModulesDir) then begin
-        Log('Modules dir does not exist after FLExTools install — re-detecting');
-        ModulesDir := DetectModulesDir();
-        if ModulesDir = '' then
-          ModulesDir := ExpandConstant('{localappdata}\FLExTools\Modules');
-        Log('Using Modules dir: ' + ModulesDir);
-        ForceDirectories(ModulesDir);
-      end;
     end;
   end;
 end;
