@@ -106,42 +106,7 @@ end;
 var
   ModulesDirPage : TInputDirWizardPage;
   ModulesDir     : String;
-  PythonExe      : String;   { Python executable found at init time }
-  NeedsFLExTools : Boolean;  { True if FLExTools should be installed/upgraded }
-
-
-{ -----------------------------------------------------------------------
-  Version helpers
-  ----------------------------------------------------------------------- }
-
-{ Split a "X.Y.Z" string into its integer parts. Missing parts default 0. }
-procedure ParseVersion(V: String; var Major, Minor, Patch: Integer);
-var
-  P: Integer;
-begin
-  Major := 0; Minor := 0; Patch := 0;
-  P := Pos('.', V);
-  if P = 0 then begin Major := StrToIntDef(V, 0); Exit; end;
-  Major := StrToIntDef(Copy(V, 1, P-1), 0);
-  V := Copy(V, P+1, Length(V));
-  P := Pos('.', V);
-  if P = 0 then begin Minor := StrToIntDef(V, 0); Exit; end;
-  Minor := StrToIntDef(Copy(V, 1, P-1), 0);
-  Patch := StrToIntDef(Copy(V, P+1, Length(V)), 0);
-end;
-
-{ Return 1 if A > B, -1 if A < B, 0 if equal. }
-function CompareVersions(A, B: String): Integer;
-var
-  Ma, Mi, Pa, Mb, Mib, Pb: Integer;
-begin
-  ParseVersion(A, Ma, Mi, Pa);
-  ParseVersion(B, Mb, Mib, Pb);
-  if Ma <> Mb then begin if Ma > Mb then Result := 1 else Result := -1; Exit; end;
-  if Mi <> Mib then begin if Mi > Mib then Result := 1 else Result := -1; Exit; end;
-  if Pa <> Pb then begin if Pa > Pb then Result := 1 else Result := -1; Exit; end;
-  Result := 0;
-end;
+  NeedsFLExTools : Boolean;  { True if FLExTools should be installed }
 
 
 { -----------------------------------------------------------------------
@@ -204,97 +169,14 @@ end;
 
 
 { -----------------------------------------------------------------------
-  Python detection
+  FLExTools detection — filesystem only, no cmd.exe or Python required
   ----------------------------------------------------------------------- }
-
-function FindPython(): String;
-var
-  FLExDir, Candidate: String;
-  ResultCode: Integer;
-begin
-  Result := '';
-
-  { Check known FLEx Python locations first }
-  FLExDir := GetFLExInstallDir();
-  if FLExDir <> '' then begin
-    Candidate := FLExDir + '\Python\python.exe';
-    if FileExists(Candidate) then begin Log('Found Python: ' + Candidate); Result := Candidate; Exit; end;
-    Candidate := FLExDir + '\Python3\python.exe';
-    if FileExists(Candidate) then begin Log('Found Python: ' + Candidate); Result := Candidate; Exit; end;
-    Candidate := FLExDir + '\lib\python\python.exe';
-    if FileExists(Candidate) then begin Log('Found Python: ' + Candidate); Result := Candidate; Exit; end;
-  end;
-
-  { Fall back to system Python via where.exe }
-  Exec(ExpandConstant('{sys}\where.exe'), 'python',
-       '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-  if ResultCode = 0 then begin
-    Log('Using system Python from PATH');
-    Result := 'python';   { will be found on PATH }
-  end else
-    Log('Python not found');
-end;
-
-
-{ -----------------------------------------------------------------------
-  Run a command and capture its stdout to a temp file.
-  Returns True if the process exited with code 0.
-  ----------------------------------------------------------------------- }
-function RunAndCapture(ExeName, Params: String; var Output: String): Boolean;
-var
-  TempFile: String;
-  Lines: TArrayOfString;
-  I, ResultCode: Integer;
-begin
-  Output := '';
-  TempFile := ExpandConstant('{tmp}\capture.txt');
-  Result := Exec(ExpandConstant('{cmd}'),
-    '/c "' + ExeName + '" ' + Params + ' > "' + TempFile + '" 2>&1',
-    '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-  Result := Result and (ResultCode = 0);
-  if LoadStringsFromFile(TempFile, Lines) then
-    for I := 0 to GetArrayLength(Lines)-1 do
-      Output := Output + Trim(Lines[I]) + ' ';
-  Output := Trim(Output);
-  DeleteFile(TempFile);
-  Log('RunAndCapture "' + ExeName + ' ' + Params + '" -> ' +
-      BoolStr(Result) + ' output: ' + Output);
-end;
-
-
-{ -----------------------------------------------------------------------
-  FLExTools version detection
-  ----------------------------------------------------------------------- }
-
-function GetInstalledFLExToolsVersion(): String;
-var
-  Output: String;
-begin
-  Result := '0.0.0';
-  if PythonExe = '' then Exit;
-
-  { Ask Python to import flextoolslib and report its version }
-  RunAndCapture(PythonExe,
-    '-c "import flextoolslib; print(flextoolslib.__version__)"',
-    Output);
-
-  { Output should be a bare version string, e.g. "2.3.2" }
-  if (Output <> '') and (Pos(' ', Trim(Output)) = 0) then
-    Result := Trim(Output);
-
-  Log('Installed FLExTools version: ' + Result);
-end;
 
 function FLExToolsIsInstalled(): Boolean;
-var
-  Output: String;
 begin
-  Result := False;
-  if PythonExe = '' then Exit;
-  RunAndCapture(PythonExe,
-    '-c "import flextoolslib; print(''ok'')"', Output);
-  Result := Pos('ok', Output) > 0;
-  Log('FLExTools importable: ' + BoolStr(Result));
+  { FLExTools always installs to %LOCALAPPDATA%\FLExTools }
+  Result := DirExists(ExpandConstant('{localappdata}\FLExTools'));
+  Log('FLExTools dir exists: ' + BoolStr(Result));
 end;
 
 
@@ -337,52 +219,45 @@ end;
 
 procedure InstallFLExTools();
 var
-  ZipPath, ExtractDir, VBSPath, Output: String;
+  ZipPath, ExtractDir, VBSPath: String;
   ResultCode: Integer;
 begin
   Log('Installing FLExTools from bundled zip...');
   ZipPath    := ExpandConstant('{tmp}\FlexTools.zip');
   ExtractDir := ExpandConstant('{tmp}\FlexToolsInstall');
 
-  Log('Zip expected at: ' + ZipPath);
-  Log('Zip exists: ' + BoolStr(FileExists(ZipPath)));
-
+  Log('Zip path: ' + ZipPath + '  exists: ' + BoolStr(FileExists(ZipPath)));
   if not FileExists(ZipPath) then begin
-    Log('FlexTools.zip not found — {tmp} files not yet extracted at ssInstall');
     MsgBox('Could not find the bundled FLExTools package. Please install FLExTools manually from:'
       + #13#10 + 'https://github.com/cdfarrow/flextools/releases',
       mbError, MB_OK);
     Exit;
   end;
 
-  { Extract zip via PowerShell; capture output so failures appear in the log }
-  RunAndCapture('powershell.exe',
+  { Extract zip via PowerShell directly — no cmd.exe required }
+  Exec('powershell.exe',
     '-NoProfile -NonInteractive -Command "Expand-Archive -LiteralPath ''' +
     ZipPath + ''' -DestinationPath ''' + ExtractDir + ''' -Force"',
-    Output);
-  Log('Expand-Archive output: [' + Output + ']');
+    '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  Log('Expand-Archive exit code: ' + IntToStr(ResultCode));
 
-  { Accept either FlexTools\InstallOrUpdate.vbs (normal zip layout)
-    or InstallOrUpdate.vbs at the root (in case the zip extracts flat) }
+  { Accept both FlexTools\InstallOrUpdate.vbs and a flat layout }
   VBSPath := ExtractDir + '\FlexTools\InstallOrUpdate.vbs';
   if not FileExists(VBSPath) then
     VBSPath := ExtractDir + '\InstallOrUpdate.vbs';
   Log('VBS path: ' + VBSPath + '  exists: ' + BoolStr(FileExists(VBSPath)));
 
   if not FileExists(VBSPath) then begin
-    Log('InstallOrUpdate.vbs not found anywhere under: ' + ExtractDir);
     MsgBox('Could not install FLExTools automatically. Please install FLExTools manually from:'
       + #13#10 + 'https://github.com/cdfarrow/flextools/releases',
       mbError, MB_OK);
     Exit;
   end;
 
-  Log('Running FLExTools InstallOrUpdate.vbs from: ' + VBSPath);
-  { Use cscript.exe so output goes to the setup log rather than being swallowed }
-  RunAndCapture('cscript.exe', '//NoLogo "' + VBSPath + '"', Output);
-  Log('InstallOrUpdate.vbs output: [' + Output + ']');
-  ResultCode := 0;  { RunAndCapture already logged success/failure }
-  Log('InstallOrUpdate.vbs exited with code: ' + IntToStr(ResultCode));
+  Log('Running FLExTools InstallOrUpdate.vbs...');
+  Exec('wscript.exe', '"' + VBSPath + '"',
+       ExtractFileDir(VBSPath), SW_SHOWNORMAL, ewWaitUntilTerminated, ResultCode);
+  Log('InstallOrUpdate.vbs exit code: ' + IntToStr(ResultCode));
 end;
 
 
@@ -391,12 +266,9 @@ end;
   ----------------------------------------------------------------------- }
 
 function InitializeSetup(): Boolean;
-var
-  InstalledVer: String;
 begin
   Result := True;
 
-  { Abort if FLEx is not installed }
   if not FLExIsInstalled() then begin
     MsgBox('FieldWorks Language Explorer (FLEx) must be installed before running this setup.'
       + #13#10#13#10
@@ -406,23 +278,11 @@ begin
     Exit;
   end;
 
-  PythonExe := FindPython();
-
-  { Decide whether we need to install / upgrade FLExTools }
-  if not FLExToolsIsInstalled() then begin
-    Log('FLExTools not installed — will install bundled version ' + BundledFLExToolsVersion);
-    NeedsFLExTools := True;
-  end else begin
-    InstalledVer := GetInstalledFLExToolsVersion();
-    if CompareVersions(BundledFLExToolsVersion, InstalledVer) > 0 then begin
-      Log('Bundled FLExTools (' + BundledFLExToolsVersion + ') is newer than installed ('
-          + InstalledVer + ') — will upgrade');
-      NeedsFLExTools := True;
-    end else begin
-      Log('Installed FLExTools (' + InstalledVer + ') is current or newer — skipping');
-      NeedsFLExTools := False;
-    end;
-  end;
+  NeedsFLExTools := not FLExToolsIsInstalled();
+  if NeedsFLExTools then
+    Log('FLExTools not found — will install bundled version ' + BundledFLExToolsVersion)
+  else
+    Log('FLExTools already installed — skipping');
 end;
 
 procedure InitializeWizard();
