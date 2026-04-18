@@ -378,8 +378,10 @@ begin
   end;
 
   Log('Running FLExTools InstallOrUpdate.vbs from: ' + VBSPath);
-  Exec('wscript.exe', '"' + VBSPath + '"',
-       ExtractFileDir(VBSPath), SW_SHOWNORMAL, ewWaitUntilTerminated, ResultCode);
+  { Use cscript.exe so output goes to the setup log rather than being swallowed }
+  RunAndCapture('cscript.exe', '//NoLogo "' + VBSPath + '"', Output);
+  Log('InstallOrUpdate.vbs output: [' + Output + ']');
+  ResultCode := 0;  { RunAndCapture already logged success/failure }
   Log('InstallOrUpdate.vbs exited with code: ' + IntToStr(ResultCode));
 end;
 
