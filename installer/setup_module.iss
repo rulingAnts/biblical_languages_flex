@@ -81,12 +81,13 @@ Source: "..\tools\{#ModuleFile}"; DestDir: "{code:GetModulesDir}"; \
 ; Start Menu shortcut for FLExTools — created when we install FLExTools.
 ; uninsneveruninstall: FLExTools itself is not uninstalled by us, so leave
 ; the shortcut in place when our module is removed.
+; Check: ShortcutMissing prevents creating a duplicate on re-install.
 Name: "{userprograms}\FLExTools\FLExTools"; \
     Filename: "{win}\py.exe"; \
     Parameters: """{localappdata}\FLExTools\FlexTools.py"""; \
     WorkingDir: "{localappdata}\FLExTools"; \
     Comment: "Run FLExTools — utilities for FieldWorks Language Explorer"; \
-    Flags: uninsneveruninstall
+    Flags: uninsneveruninstall; Check: ShortcutMissing
 
 [Registry]
 ; Remember the Modules dir so future upgrades pre-fill correctly
@@ -267,6 +268,13 @@ begin
   Log('Download success: ' + BoolStr(Result));
 end;
 
+
+{ Only create the FLExTools Start Menu shortcut if it does not already exist }
+function ShortcutMissing(): Boolean;
+begin
+  Result := not FileExists(ExpandConstant('{userprograms}\FLExTools\FLExTools.lnk'));
+  Log('FLExTools shortcut missing (will create): ' + BoolStr(Result));
+end;
 
 { Used by [Run] section — must be a named function, not a variable reference }
 function GetPyExe(Param: String): String;
