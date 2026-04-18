@@ -337,32 +337,41 @@ end;
 
 procedure InstallFLExTools();
 var
-  ZipPath, ExtractDir, VBSPath: String;
+  ZipPath, ExtractDir, VBSPath, Output: String;
   ResultCode: Integer;
 begin
   Log('Installing FLExTools from bundled zip...');
-  ZipPath   := ExpandConstant('{tmp}\FlexTools.zip');
+  ZipPath    := ExpandConstant('{tmp}\FlexTools.zip');
   ExtractDir := ExpandConstant('{tmp}\FlexToolsInstall');
 
-  { Extract zip using PowerShell }
-  Exec('powershell.exe',
-    '-NoProfile -Command "Expand-Archive -Path ''' + ZipPath +
-    ''' -DestinationPath ''' + ExtractDir + ''' -Force"',
-    '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  Log('Zip expected at: ' + ZipPath);
+  Log('Zip exists: ' + BoolStr(FileExists(ZipPath)));
 
-  if ResultCode <> 0 then begin
-    Log('Zip extraction failed (code ' + IntToStr(ResultCode) + ')');
-    MsgBox('Could not extract FLExTools. Please install FLExTools manually from:'
+  if not FileExists(ZipPath) then begin
+    Log('FlexTools.zip not found — {tmp} files not yet extracted at ssInstall');
+    MsgBox('Could not find the bundled FLExTools package. Please install FLExTools manually from:'
       + #13#10 + 'https://github.com/cdfarrow/flextools/releases',
       mbError, MB_OK);
     Exit;
   end;
 
-  { FLExTools zip extracts to a "FlexTools" subfolder }
+  { Extract zip via PowerShell; capture output so failures appear in the log }
+  RunAndCapture('powershell.exe',
+    '-NoProfile -NonInteractive -Command "Expand-Archive -LiteralPath ''' +
+    ZipPath + ''' -DestinationPath ''' + ExtractDir + ''' -Force"',
+    Output);
+  Log('Expand-Archive output: [' + Output + ']');
+
+  { Accept either FlexTools\InstallOrUpdate.vbs (normal zip layout)
+    or InstallOrUpdate.vbs at the root (in case the zip extracts flat) }
   VBSPath := ExtractDir + '\FlexTools\InstallOrUpdate.vbs';
+  if not FileExists(VBSPath) then
+    VBSPath := ExtractDir + '\InstallOrUpdate.vbs';
+  Log('VBS path: ' + VBSPath + '  exists: ' + BoolStr(FileExists(VBSPath)));
+
   if not FileExists(VBSPath) then begin
-    Log('InstallOrUpdate.vbs not found at: ' + VBSPath);
-    MsgBox('FLExTools installer script not found. Please install FLExTools manually from:'
+    Log('InstallOrUpdate.vbs not found anywhere under: ' + ExtractDir);
+    MsgBox('Could not install FLExTools automatically. Please install FLExTools manually from:'
       + #13#10 + 'https://github.com/cdfarrow/flextools/releases',
       mbError, MB_OK);
     Exit;
@@ -370,7 +379,7 @@ begin
 
   Log('Running FLExTools InstallOrUpdate.vbs from: ' + VBSPath);
   Exec('wscript.exe', '"' + VBSPath + '"',
-       ExtractDir + '\FlexTools', SW_SHOWNORMAL, ewWaitUntilTerminated, ResultCode);
+       ExtractFileDir(VBSPath), SW_SHOWNORMAL, ewWaitUntilTerminated, ResultCode);
   Log('InstallOrUpdate.vbs exited with code: ' + IntToStr(ResultCode));
 end;
 
