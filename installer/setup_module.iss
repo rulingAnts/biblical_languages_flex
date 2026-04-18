@@ -173,10 +173,13 @@ end;
   ----------------------------------------------------------------------- }
 
 function FLExToolsIsInstalled(): Boolean;
+var
+  Base: String;
 begin
-  { FLExTools always installs to %LOCALAPPDATA%\FLExTools }
-  Result := DirExists(ExpandConstant('{localappdata}\FLExTools'));
-  Log('FLExTools dir exists: ' + BoolStr(Result));
+  Base := ExpandConstant('{localappdata}\FLExTools');
+  { Require the Modules subdirectory — a bare folder isn't a working install }
+  Result := DirExists(Base + '\Modules');
+  Log('FLExTools base: ' + Base + '  Modules exists: ' + BoolStr(Result));
 end;
 
 
