@@ -2,13 +2,15 @@
 ; Inno Setup 6  (https://jrsoftware.org/isinfo.php)
 ;
 ; What this installer does:
-;   1. Verifies FLEx is installed (aborts with friendly message if not)
-;   2. Installs FLExTools if missing, or upgrades it if our bundled version
-;      is newer than whatever is already installed.  Uses FLExTools' own
-;      InstallOrUpdate.vbs so FLExTools remains independently managed.
-;      Never downgrades an existing newer FLExTools installation.
-;   3. Copies Split_Slash_Glosses.py into the FLExTools Modules folder.
-;   4. Uninstaller removes only Split_Slash_Glosses.py and itself.
+;   1. Verifies FLEx is installed — offers to open the download page if not,
+;      then aborts (FLEx must be installed before we can proceed).
+;   2. Verifies Python (py.exe) is available — offers to download and run the
+;      Python installer if not, then verifies again before continuing.
+;   3. Installs FLExTools if missing: copies bundled loose files to
+;      %LOCALAPPDATA%\FLExTools\ then runs:
+;        py -m pip install --upgrade flextoolslib
+;   4. Copies Split_Slash_Glosses.py into the FLExTools Modules folder.
+;   5. Uninstaller removes only Split_Slash_Glosses.py and itself.
 ;      FLExTools is left in place; a message advises the user how to
 ;      remove it separately if they wish.
 ;
@@ -96,8 +98,10 @@ FinishedLabel=The Split Slash Glosses module has been installed.%n%nRestart FLEx
 [Code]
 
 const
-  { Version of FLExTools bundled with this installer — set at compile time }
   BundledFLExToolsVersion = '{#FLEXTOOLS_VERSION}';
+  FLExDownloadURL    = 'https://software.sil.org/fieldworks/download/';
+  // Update this URL when a new Python stable release ships
+  PythonInstallerURL = 'https://www.python.org/ftp/python/3.13.3/python-3.13.3-amd64.exe';
 
 { BoolToStr is not a built-in in Inno Setup Pascal }
 function BoolStr(B: Boolean): String;
@@ -108,7 +112,8 @@ end;
 var
   ModulesDirPage : TInputDirWizardPage;
   ModulesDir     : String;
-  NeedsFLExTools : Boolean;  { True if FLExTools should be installed }
+  NeedsFLExTools : Boolean;  { True if FLExTools app files should be installed }
+  NeedsPython    : Boolean;  { True if py.exe was not found at startup }
 
 
 { -----------------------------------------------------------------------
@@ -178,8 +183,8 @@ function FLExToolsIsInstalled(): Boolean;
 var
   Marker: String;
 begin
-  { scripts\requirements.txt is part of the FLExTools app files bundle;
-    its presence means the app files have been installed. }
+  // scripts\requirements.txt is part of the FLExTools app files bundle;
+  // its presence means the app files have been installed.
   Marker := ExpandConstant('{localappdata}\FLExTools\scripts\requirements.txt');
   Result := FileExists(Marker);
   Log('FLExTools app files installed: ' + BoolStr(Result) + '  (marker: ' + Marker + ')');
@@ -189,6 +194,56 @@ end;
 function DoInstallFLExTools(): Boolean;
 begin
   Result := NeedsFLExTools;
+end;
+
+
+{ -----------------------------------------------------------------------
+  Python (py.exe) detection
+  ----------------------------------------------------------------------- }
+
+function FindPyExe(): String;
+var
+  Candidate: String;
+begin
+  Result := '';
+
+  // System-wide Python Launcher — installed to Windows dir for all-users installs
+  Candidate := ExpandConstant('{win}\py.exe');
+  if FileExists(Candidate) then begin Log('py.exe found: ' + Candidate); Result := Candidate; Exit; end;
+
+  // Per-user Python Launcher location (Python 3.x per-user install)
+  Candidate := ExpandConstant('{localappdata}\Programs\Python\Launcher\py.exe');
+  if FileExists(Candidate) then begin Log('py.exe found: ' + Candidate); Result := Candidate; Exit; end;
+
+  Log('py.exe not found');
+end;
+
+
+{ -----------------------------------------------------------------------
+  File download via PowerShell Net.WebClient (hidden, no console window)
+  ----------------------------------------------------------------------- }
+
+function DownloadFile(URL: String; DestPath: String): Boolean;
+var
+  PSCmd: String;
+  ResultCode: Integer;
+begin
+  Result := False;
+  // Use PowerShell's Net.WebClient so no console window appears.
+  // -NonInteractive -NoProfile keep startup fast and silent.
+  PSCmd := '-NonInteractive -NoProfile -Command '
+    + '"(New-Object Net.WebClient).DownloadFile(''' + URL + ''', ''' + DestPath + ''')"';
+  Log('Downloading: ' + URL + ' -> ' + DestPath);
+  if not Exec('powershell.exe', PSCmd, '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then begin
+    Log('powershell.exe could not be launched for download');
+    Exit;
+  end;
+  if ResultCode <> 0 then begin
+    Log('Download failed with exit code: ' + IntToStr(ResultCode));
+    Exit;
+  end;
+  Result := FileExists(DestPath);
+  Log('Download success: ' + BoolStr(Result));
 end;
 
 
@@ -232,18 +287,45 @@ end;
   ----------------------------------------------------------------------- }
 
 function InitializeSetup(): Boolean;
+var
+  Answer: Integer;
 begin
   Result := True;
 
+  // ---- FLEx check ----
   if not FLExIsInstalled() then begin
-    MsgBox('FieldWorks Language Explorer (FLEx) must be installed before running this setup.'
+    Answer := MsgBox(
+      'FieldWorks Language Explorer (FLEx) must be installed before running this setup.'
       + #13#10#13#10
-      + 'Download FLEx from: https://software.sil.org/fieldworks/',
-      mbCriticalError, MB_OK);
+      + 'Would you like to open the FLEx download page in your browser?'
+      + #13#10
+      + '(Setup will exit after opening the page — re-run this installer after FLEx is installed.)',
+      mbConfirmation, MB_YESNO);
+    if Answer = IDYES then
+      ShellExec('open', FLExDownloadURL, '', '', SW_SHOWNORMAL, ewNoWait, Answer);
     Result := False;
     Exit;
   end;
 
+  // ---- Python check ----
+  NeedsPython := FindPyExe() = '';
+  if NeedsPython then begin
+    Answer := MsgBox(
+      'Python is required but was not found on this computer.'
+      + #13#10#13#10
+      + 'Click Yes to download and run the Python installer now.'
+      + #13#10
+      + 'Click No to exit and install Python manually from https://python.org',
+      mbConfirmation, MB_YESNO);
+    if Answer = IDNO then begin
+      Result := False;
+      Exit;
+    end;
+    // User said Yes — we will download and install Python in CurStepChanged(ssPostInstall)
+    // (we need the installer to continue so [Files] can extract our bundled files first)
+  end;
+
+  // ---- FLExTools check ----
   NeedsFLExTools := not FLExToolsIsInstalled();
   if NeedsFLExTools then
     Log('FLExTools not found — will install bundled version ' + BundledFLExToolsVersion)
@@ -255,8 +337,8 @@ procedure InitializeWizard();
 var
   Detected, Desc: String;
 begin
-  { If FLExTools is not yet installed we will install it to the default
-    location, so we know where Modules will be. }
+  // If FLExTools is not yet installed we will install it to the default
+  // location, so we know where Modules will be.
   if NeedsFLExTools then
     Detected := ExpandConstant('{localappdata}\FLExTools\Modules')
   else
@@ -298,9 +380,10 @@ end;
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   ResultCode: Integer;
+  PyExe, TempInstaller: String;
 begin
   if CurStep = ssInstall then begin
-    { Ensure Modules dir exists before [Files] copies our module into it }
+    // Ensure Modules dir exists before [Files] copies our module into it
     if not DirExists(ModulesDir) then begin
       Log('Creating Modules dir: ' + ModulesDir);
       ForceDirectories(ModulesDir);
@@ -308,22 +391,68 @@ begin
   end;
 
   if CurStep = ssPostInstall then begin
-    { Install flextoolslib via the Python Launcher (py.exe).
-      Runs hidden — no console window needed, so broken display doesn't matter.
-      This is exactly what FLExTools' InstallOrUpdate.vbs does, minus cmd.exe. }
+
+    // ---- Step 1: Install Python if needed ----
+    if NeedsPython then begin
+      WizardForm.StatusLabel.Caption := 'Downloading Python installer...';
+      TempInstaller := ExpandConstant('{tmp}\python_installer.exe');
+
+      if not DownloadFile(PythonInstallerURL, TempInstaller) then begin
+        MsgBox('Could not download the Python installer.' + #13#10#13#10
+          + 'Please install Python manually from https://python.org, then re-run this setup.',
+          mbError, MB_OK);
+        Exit;
+      end;
+
+      WizardForm.StatusLabel.Caption := 'Running Python installer...';
+      Log('Launching Python installer: ' + TempInstaller);
+      // Run the Python installer interactively so the user can choose install options.
+      // We wait for it to complete before continuing.
+      if not Exec(TempInstaller, '', '', SW_SHOW, ewWaitUntilTerminated, ResultCode) then begin
+        MsgBox('Could not launch the Python installer.' + #13#10#13#10
+          + 'Please install Python manually from https://python.org, then re-run this setup.',
+          mbError, MB_OK);
+        Exit;
+      end;
+      if ResultCode <> 0 then begin
+        Log('Python installer exited with code: ' + IntToStr(ResultCode));
+        MsgBox('The Python installer did not complete successfully (exit code: '
+          + IntToStr(ResultCode) + ').' + #13#10#13#10
+          + 'Please install Python manually from https://python.org, then re-run this setup.',
+          mbError, MB_OK);
+        Exit;
+      end;
+
+      // Re-detect py.exe now that Python is installed
+      PyExe := FindPyExe();
+      if PyExe = '' then begin
+        MsgBox('Python was installed but the Python Launcher (py.exe) could not be found.'
+          + #13#10#13#10
+          + 'Please re-run this setup, or run manually:' + #13#10
+          + '    py -m pip install flextoolslib',
+          mbError, MB_OK);
+        Exit;
+      end;
+      Log('py.exe found after install: ' + PyExe);
+    end else begin
+      PyExe := FindPyExe();
+    end;
+
+    // ---- Step 2: Install flextoolslib via pip ----
     WizardForm.StatusLabel.Caption := 'Installing flextoolslib Python package...';
-    Log('Running: py -m pip install --upgrade flextoolslib');
-    if not Exec('py', '-m pip install --upgrade flextoolslib',
+    Log('Running: ' + PyExe + ' -m pip install --upgrade flextoolslib');
+    if not Exec(PyExe, '-m pip install --upgrade flextoolslib',
                 '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then begin
-      Log('py.exe not found or could not launch (Exec returned False)');
-      MsgBox('Python Launcher (py.exe) was not found.' + #13#10#13#10
-        + 'Please install Python from https://python.org, then run:' + #13#10
+      Log('py.exe could not be launched for pip install');
+      MsgBox('Could not run pip to install flextoolslib.' + #13#10#13#10
+        + 'Please open a command prompt and run:' + #13#10
         + '    py -m pip install flextoolslib',
         mbError, MB_OK);
     end else begin
       Log('pip install exit code: ' + IntToStr(ResultCode));
       if ResultCode <> 0 then
-        MsgBox('Could not install flextoolslib automatically.' + #13#10#13#10
+        MsgBox('Could not install flextoolslib automatically (exit code: '
+          + IntToStr(ResultCode) + ').' + #13#10#13#10
           + 'Please open a command prompt and run:' + #13#10
           + '    py -m pip install flextoolslib',
           mbError, MB_OK);
@@ -339,17 +468,24 @@ begin
     Result := ExpandConstant('{localappdata}\FLExTools\Modules');
 end;
 
-{ Advise the user about FLExTools on uninstall — we never remove it }
+{ Advise the user about FLExTools/Python on uninstall — we never remove them }
 procedure DeinitializeUninstall();
 begin
   MsgBox('The Split Slash Glosses module has been removed.'
     + #13#10#13#10
-    + 'FLExTools was not uninstalled — it may be used by other modules.'
+    + 'The following were NOT uninstalled (they may be used by other software):'
     + #13#10
-    + 'If you no longer need FLExTools, you can remove it by deleting its folder'
     + #13#10
-    + '(usually: ' + ExpandConstant('{localappdata}\FLExTools') + ')'
+    + '  FLExTools  — delete its folder to remove it:'
     + #13#10
-    + 'and running:  pip uninstall flextoolslib',
+    + '    ' + ExpandConstant('{localappdata}\FLExTools')
+    + #13#10
+    + '    then run:  py -m pip uninstall flextoolslib'
+    + #13#10
+    + #13#10
+    + '  Python  — uninstall via Settings > Apps > Python'
+    + #13#10
+    + #13#10
+    + '  FLEx  — uninstall via Settings > Apps > FieldWorks',
     mbInformation, MB_OK);
 end;
