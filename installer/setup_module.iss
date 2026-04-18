@@ -210,11 +210,10 @@ function FLExToolsIsInstalled(): Boolean;
 var
   Marker: String;
 begin
-  // scripts\requirements.txt is part of the FLExTools app files bundle;
-  // its presence means the app files have been installed.
-  Marker := ExpandConstant('{localappdata}\FLExTools\scripts\requirements.txt');
+  // FlexTools.py is the main entry point — if it exists, FLExTools is properly installed.
+  Marker := ExpandConstant('{localappdata}\FLExTools\FlexTools.py');
   Result := FileExists(Marker);
-  Log('FLExTools app files installed: ' + BoolStr(Result) + '  (marker: ' + Marker + ')');
+  Log('FLExTools installed: ' + BoolStr(Result) + '  (marker: ' + Marker + ')');
 end;
 
 { Used as Check: in the [Files] and [Icons] sections }
