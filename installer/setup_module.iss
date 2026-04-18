@@ -150,18 +150,59 @@ end;
 function GetFLExInstallDir(): String;
 var
   InstallDir: String;
+  FindRec: TFindRec;
+  SilDir: String;
 begin
   Result := '';
-  { FLEx 9.x registers under HKLM\SOFTWARE\SIL\FieldWorks (64-bit) }
-  if RegQueryStringValue(HKLM, 'SOFTWARE\SIL\FieldWorks', 'RootDir', InstallDir) then
-    begin Result := InstallDir; Exit; end;
-  if RegQueryStringValue(HKLM, 'SOFTWARE\WOW6432Node\SIL\FieldWorks', 'RootDir', InstallDir) then
-    begin Result := InstallDir; Exit; end;
-  { Fallback: check the default install path }
-  if DirExists(ExpandConstant('{pf}\SIL\FieldWorks')) then
-    begin Result := ExpandConstant('{pf}\SIL\FieldWorks'); Exit; end;
-  if DirExists(ExpandConstant('{pf32}\SIL\FieldWorks')) then
-    Result := ExpandConstant('{pf32}\SIL\FieldWorks');
+
+  { Try registry — attempt both 64-bit and 32-bit views.
+    FLEx 9.x is 64-bit; on a 32-bit Inno Setup process HKLM reads the WOW node,
+    so we also pass the 64-bit override flag ($01000000). }
+  if RegQueryStringValue(HKLM, 'SOFTWARE\SIL\FieldWorks', 'RootDir', InstallDir) and
+     (InstallDir <> '') then
+    begin Log('FLEx dir from registry (32-bit view): ' + InstallDir); Result := InstallDir; Exit; end;
+  if RegQueryStringValue(HKLM or $01000000, 'SOFTWARE\SIL\FieldWorks', 'RootDir', InstallDir) and
+     (InstallDir <> '') then
+    begin Log('FLEx dir from registry (64-bit view): ' + InstallDir); Result := InstallDir; Exit; end;
+
+  { Filesystem fallback: FLEx installs to a versioned path like
+    C:\Program Files\SIL\FieldWorks 9.0.17 — scan for any matching dir. }
+  SilDir := ExpandConstant('{pf}\SIL\');
+  if FindFirst(SilDir + 'FieldWorks*', FindRec) then begin
+    try
+      repeat
+        if (FindRec.Attributes and $10) <> 0 then begin   { FILE_ATTRIBUTE_DIRECTORY }
+          Log('FLEx candidate: ' + SilDir + FindRec.Name);
+          if FileExists(SilDir + FindRec.Name + '\FieldWorks.exe') then begin
+            Result := SilDir + FindRec.Name;
+            Log('FLEx found by scan: ' + Result);
+            Exit;
+          end;
+        end;
+      until not FindNext(FindRec);
+    finally
+      FindClose(FindRec);
+    end;
+  end;
+
+  SilDir := ExpandConstant('{pf32}\SIL\');
+  if FindFirst(SilDir + 'FieldWorks*', FindRec) then begin
+    try
+      repeat
+        if (FindRec.Attributes and $10) <> 0 then begin
+          if FileExists(SilDir + FindRec.Name + '\FieldWorks.exe') then begin
+            Result := SilDir + FindRec.Name;
+            Log('FLEx found by scan (pf32): ' + Result);
+            Exit;
+          end;
+        end;
+      until not FindNext(FindRec);
+    finally
+      FindClose(FindRec);
+    end;
+  end;
+
+  Log('FLEx install dir not found');
 end;
 
 function FLExIsInstalled(): Boolean;
