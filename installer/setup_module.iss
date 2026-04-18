@@ -313,15 +313,21 @@ begin
       This is exactly what FLExTools' InstallOrUpdate.vbs does, minus cmd.exe. }
     WizardForm.StatusLabel.Caption := 'Installing flextoolslib Python package...';
     Log('Running: py -m pip install --upgrade flextoolslib');
-    Exec('py', '-m pip install --upgrade flextoolslib',
-         '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-    Log('pip install exit code: ' + IntToStr(ResultCode));
-    if ResultCode <> 0 then
-      MsgBox('Could not install flextoolslib automatically.' + #13#10#13#10
-        + 'Please open a command prompt and run:' + #13#10
-        + '    py -m pip install flextoolslib' + #13#10#13#10
-        + 'If "py" is not found, install Python from https://python.org first.',
+    if not Exec('py', '-m pip install --upgrade flextoolslib',
+                '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then begin
+      Log('py.exe not found or could not launch (Exec returned False)');
+      MsgBox('Python Launcher (py.exe) was not found.' + #13#10#13#10
+        + 'Please install Python from https://python.org, then run:' + #13#10
+        + '    py -m pip install flextoolslib',
         mbError, MB_OK);
+    end else begin
+      Log('pip install exit code: ' + IntToStr(ResultCode));
+      if ResultCode <> 0 then
+        MsgBox('Could not install flextoolslib automatically.' + #13#10#13#10
+          + 'Please open a command prompt and run:' + #13#10
+          + '    py -m pip install flextoolslib',
+          mbError, MB_OK);
+    end;
   end;
 end;
 
