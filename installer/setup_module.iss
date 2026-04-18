@@ -338,7 +338,7 @@ begin
 
   Log('Running FLExTools InstallOrUpdate.vbs from: ' + VBSPath);
   Exec('wscript.exe', '"' + VBSPath + '"',
-       ExtractDir + '\FlexTools', SW_NORMAL, ewWaitUntilTerminated, ResultCode);
+       ExtractDir + '\FlexTools', SW_SHOWNORMAL, ewWaitUntilTerminated, ResultCode);
   Log('InstallOrUpdate.vbs exited with code: ' + IntToStr(ResultCode));
 end;
 
