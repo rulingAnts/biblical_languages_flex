@@ -1,0 +1,53 @@
+name: Deploy GitHub Pages
+
+# Triggers:
+#   - Push a version tag (e.g. git tag v1.0.0 && git push origin v1.0.0)
+#     → deploys the site AND builds the installer release (see release-installer.yml)
+#   - Manual run via the Actions tab (workflow_dispatch)
+#     → deploys the site without creating a release
+#
+# Regular pushes to main do NOT trigger this workflow, so the public site
+# stays on the last intentionally deployed version while you develop.
+#
+# ONE-TIME SETUP (do this once in the GitHub repo settings):
+#   Settings → Pages → Source → change from "Deploy from a branch" to
+#   "GitHub Actions".  After that, this workflow is the sole publisher.
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Prevent two deployments running simultaneously
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload docs/ as Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4
