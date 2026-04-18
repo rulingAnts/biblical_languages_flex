@@ -147,60 +147,60 @@ end;
   FLEx detection
   ----------------------------------------------------------------------- }
 
-function GetFLExInstallDir(): String;
+{ Scan SilDir for any FieldWorks* subdirectory; returns first match or '' }
+function ScanForFLExUnder(SilDir: String): String;
 var
-  InstallDir: String;
   FindRec: TFindRec;
-  SilDir: String;
 begin
   Result := '';
-
-  { Try registry — attempt both 64-bit and 32-bit views.
-    FLEx 9.x is 64-bit; on a 32-bit Inno Setup process HKLM reads the WOW node,
-    so we also pass the 64-bit override flag ($01000000). }
-  if RegQueryStringValue(HKLM, 'SOFTWARE\SIL\FieldWorks', 'RootDir', InstallDir) and
-     (InstallDir <> '') then
-    begin Log('FLEx dir from registry (32-bit view): ' + InstallDir); Result := InstallDir; Exit; end;
-  if RegQueryStringValue(HKLM or $01000000, 'SOFTWARE\SIL\FieldWorks', 'RootDir', InstallDir) and
-     (InstallDir <> '') then
-    begin Log('FLEx dir from registry (64-bit view): ' + InstallDir); Result := InstallDir; Exit; end;
-
-  { Filesystem fallback: FLEx installs to a versioned path like
-    C:\Program Files\SIL\FieldWorks 9.0.17 — scan for any matching dir. }
-  SilDir := ExpandConstant('{pf}\SIL\');
+  if not DirExists(SilDir) then Exit;
+  Log('Scanning for FLEx under: ' + SilDir);
   if FindFirst(SilDir + 'FieldWorks*', FindRec) then begin
     try
       repeat
         if (FindRec.Attributes and $10) <> 0 then begin   { FILE_ATTRIBUTE_DIRECTORY }
-          Log('FLEx candidate: ' + SilDir + FindRec.Name);
-          if FileExists(SilDir + FindRec.Name + '\FieldWorks.exe') then begin
-            Result := SilDir + FindRec.Name;
-            Log('FLEx found by scan: ' + Result);
-            Exit;
-          end;
+          Log('FLEx candidate dir: ' + FindRec.Name);
+          Result := SilDir + FindRec.Name;
+          Exit;
         end;
       until not FindNext(FindRec);
     finally
       FindClose(FindRec);
     end;
+  end;
+end;
+
+function GetFLExInstallDir(): String;
+var
+  InstallDir, PF64: String;
+begin
+  Result := '';
+
+  { Try 64-bit registry view first (FLEx 9.x is a 64-bit app) }
+  if RegQueryStringValue(HKLM or $01000000, 'SOFTWARE\SIL\FieldWorks', 'RootDir', InstallDir) and
+     (InstallDir <> '') then
+    begin Log('FLEx dir from 64-bit registry: ' + InstallDir); Result := InstallDir; Exit; end;
+  { Try 32-bit registry view }
+  if RegQueryStringValue(HKLM, 'SOFTWARE\SIL\FieldWorks', 'RootDir', InstallDir) and
+     (InstallDir <> '') then
+    begin Log('FLEx dir from 32-bit registry: ' + InstallDir); Result := InstallDir; Exit; end;
+
+  { Filesystem fallback.
+    On 64-bit Windows, a 32-bit process sees {pf} as "Program Files (x86)".
+    ProgramW6432 is the env var that always points to the native 64-bit
+    Program Files folder, even from a 32-bit process. }
+  PF64 := GetEnv('ProgramW6432');
+  if PF64 <> '' then begin
+    Result := ScanForFLExUnder(PF64 + '\SIL\');
+    if Result <> '' then begin Log('FLEx found under ProgramW6432: ' + Result); Exit; end;
   end;
 
-  SilDir := ExpandConstant('{pf32}\SIL\');
-  if FindFirst(SilDir + 'FieldWorks*', FindRec) then begin
-    try
-      repeat
-        if (FindRec.Attributes and $10) <> 0 then begin
-          if FileExists(SilDir + FindRec.Name + '\FieldWorks.exe') then begin
-            Result := SilDir + FindRec.Name;
-            Log('FLEx found by scan (pf32): ' + Result);
-            Exit;
-          end;
-        end;
-      until not FindNext(FindRec);
-    finally
-      FindClose(FindRec);
-    end;
-  end;
+  { Also try the path {pf} resolves to for this process (may be x86 folder) }
+  Result := ScanForFLExUnder(ExpandConstant('{pf}\SIL\'));
+  if Result <> '' then begin Log('FLEx found under {pf}: ' + Result); Exit; end;
+
+  Result := ScanForFLExUnder(ExpandConstant('{pf32}\SIL\'));
+  if Result <> '' then begin Log('FLEx found under {pf32}: ' + Result); Exit; end;
 
   Log('FLEx install dir not found');
 end;
