@@ -77,14 +77,18 @@ Source: "FlexTools_LICENSE.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\tools\{#ModuleFile}"; DestDir: "{code:GetModulesDir}"; \
     Flags: ignoreversion
 
+; Launcher wrapper — checks FLEx is closed before opening FLExTools,
+; shows a clear warning dialog if not.  Always updated on re-install.
+Source: "..\tools\LaunchFLExTools.py"; DestDir: "{localappdata}\FLExTools"; \
+    Flags: ignoreversion
+
 [Icons]
-; Start Menu shortcut for FLExTools — created when we install FLExTools.
-; uninsneveruninstall: FLExTools itself is not uninstalled by us, so leave
-; the shortcut in place when our module is removed.
+; Start Menu shortcut — points to the launcher wrapper, not FlexTools.py directly.
+; uninsneveruninstall: FLExTools itself is not uninstalled by us, so leave the shortcut.
 ; Check: ShortcutMissing prevents creating a duplicate on re-install.
 Name: "{userprograms}\FLExTools\FLExTools"; \
     Filename: "{code:GetPywExe}"; \
-    Parameters: """{localappdata}\FLExTools\FlexTools.py"""; \
+    Parameters: """{localappdata}\FLExTools\LaunchFLExTools.py"""; \
     WorkingDir: "{localappdata}\FLExTools"; \
     Comment: "Run FLExTools — utilities for FieldWorks Language Explorer"; \
     Flags: uninsneveruninstall; Check: ShortcutMissing
@@ -105,7 +109,7 @@ Type: files; Name: "{code:GetModulesDir}\{#ModuleFile}"
 ; Offer to launch FLExTools immediately after install.
 ; Uses {code:GetPyExe} so we use the same py.exe path detected during install.
 Filename: "{code:GetPywExe}"; \
-    Parameters: """{localappdata}\FLExTools\FlexTools.py"""; \
+    Parameters: """{localappdata}\FLExTools\LaunchFLExTools.py"""; \
     WorkingDir: "{localappdata}\FLExTools"; \
     Description: "Launch FLExTools now"; \
     Flags: nowait postinstall skipifsilent unchecked
