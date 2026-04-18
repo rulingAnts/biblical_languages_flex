@@ -61,5 +61,23 @@ jobs:
           tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
           prerelease: ${{ github.event_name == 'workflow_dispatch' }}
           generate_release_notes: ${{ github.event_name != 'workflow_dispatch' }}
-          files: installer\Output\FLExGlossSplitterModuleSetup.exe
+          files: |
+            installer\Output\FLExGlossSplitterModuleSetup.exe
+            tools\Split_Slash_Glosses.py
           fail_on_unmatched_files: true
+          body: |
+            ## Installation
+
+            ### Option 1 — Installer (recommended)
+            1. Download **FLExGlossSplitterModuleSetup.exe** below and run it.
+            2. The installer will locate your FLExTools Modules folder automatically. If it can't find it, you'll be prompted to browse to it.
+            3. Restart FLExTools — **Split Slash Glosses** will appear in the module list.
+
+            ### Option 2 — Manual install
+            1. Download **Split_Slash_Glosses.py** below.
+            2. Copy it into your FLExTools `Modules` folder (e.g. `C:\Users\you\AppData\Local\FLExTools\Modules\`).
+            3. Restart FLExTools — **Split Slash Glosses** will appear in the module list.
+
+            ### Requirements
+            - [FLEx (FieldWorks Language Explorer)](https://software.sil.org/fieldworks/) — must be installed for the module to run
+            - [FLExTools](https://github.com/rmlockwood/FLExTools) — the host application that runs this module
