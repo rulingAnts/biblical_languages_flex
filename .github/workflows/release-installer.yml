@@ -1,0 +1,65 @@
+name: Build & Release Installer
+
+# Triggers:
+#   - Push a version tag (e.g. git tag v1.0.0 && git push origin v1.0.0)
+#     → builds the installer and publishes a full GitHub Release.
+#   - Manual run via the Actions tab (workflow_dispatch)
+#     → builds the installer and publishes a pre-release on GitHub so you
+#       have a real, shareable download link for test builds.
+#       Provide a version label such as "v1.0.0-beta.1" when prompted.
+#
+# Output: FLExGlossSplitterModuleSetup.exe
+#   A Windows installer that copies Split_Slash_Glosses.py into the user's
+#   FLExTools Modules folder.  No Python bundling required — the module runs
+#   inside FLExTools which already ships with its own Python + LCM bindings.
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Pre-release version label (e.g. v1.0.0-beta.1)'
+        required: true
+        default: 'v0.0.0-test'
+
+permissions:
+  contents: write   # required to create GitHub Releases
+
+jobs:
+  build-installer:
+    runs-on: windows-latest
+
+    steps:
+      # ------------------------------------------------------------------ #
+      # 1. Source                                                            #
+      # ------------------------------------------------------------------ #
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ------------------------------------------------------------------ #
+      # 2. Inno Setup 6 → Windows installer                                 #
+      #    (No Python/PyInstaller step needed — the module is a plain .py   #
+      #     file that FLExTools runs with its own bundled Python.)           #
+      # ------------------------------------------------------------------ #
+      - name: Install Inno Setup 6
+        run: choco install innosetup --yes --no-progress
+
+      - name: Compile installer with Inno Setup
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\setup_module.iss
+
+      # ------------------------------------------------------------------ #
+      # 3. Publish GitHub Release                                            #
+      #    - Tag push   → full release, auto-generated notes                 #
+      #    - Manual run → pre-release, labelled with the version input       #
+      # ------------------------------------------------------------------ #
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
+          prerelease: ${{ github.event_name == 'workflow_dispatch' }}
+          generate_release_notes: ${{ github.event_name != 'workflow_dispatch' }}
+          files: installer\Output\FLExGlossSplitterModuleSetup.exe
+          fail_on_unmatched_files: true
