@@ -20,10 +20,12 @@
     .card{background:#fff;border:1px solid #e4e4e4;border-radius:8px;padding:16px;margin:16px 0;box-shadow:0 1px 3px rgba(0,0,0,.06)}
     label{display:block;margin:.25rem 0 .25rem;color:#333}
     input[type="text"],select{width:100%;max-width:420px;padding:8px;border:1px solid #ccc;border-radius:4px}
-    button{background:#198754;color:#fff;border:0;border-radius:4px;padding:8px 14px;cursor:pointer}
-    button.secondary{background:#6c757d}
+    button,a.btn-download{background:#198754;color:#fff;border:0;border-radius:4px;padding:8px 14px;cursor:pointer;text-decoration:none;display:inline-block}
+    button.secondary,a.btn-download.secondary{background:#6c757d}
     #preview{font-family:monospace;white-space:pre-wrap;border:1px solid #0b5ed7;background:#eef6ff;border-radius:6px;padding:10px}
     .muted{color:#666;font-size:.9em}
+    .workflow-steps{line-height:1.6;padding-left:1.4rem}
+    .workflow-steps li{margin-bottom:1rem}
     .row{display:flex;gap:10px;align-items:center}
     a { color:#0b5ed7; }
   </style>
@@ -61,25 +63,94 @@
 
     <div id="preview" style="margin-top:10px;">Awaiting data…</div>
 
-    <h3 style="margin-top:1.5rem;">How to use</h3>
-    <ol style="line-height:2">
-      <li><strong>Select a book</strong> from the dropdown and <strong>enter a passage</strong> in the reference box (e.g. <code>1:1-1:3</code>, <code>5</code>, <code>3:16</code>).</li>
-      <li><strong>Click "Load"</strong> to fetch the passage data.</li>
-      <li><strong>Wait</strong> for the blue preview box above to populate — this confirms the data loaded successfully.</li>
-      <li><strong>Click "Generate .flextext"</strong> and save the downloaded file.</li>
-      <li><strong>Download the FLEx Project template</strong> (see Downloads below) and open it in FLEx.</li>
-      <li>In FLEx, open the <em>Interlinear Texts</em> view, then choose <strong>File &rarr; Import &rarr; FLExText interlinear…</strong> and select your saved file.</li>
-      <li><strong>Clean up word glosses</strong> as needed — the auto-generated ones are a starting point.</li>
-      <li>Use the <strong>Text Chart</strong> tool to analyse the passage.</li>
-      <li><em>(Optional)</em> Export your FLEx text chart data and explore it further with <a href="https://rulingants.github.io/fdat/" target="_blank" rel="noopener"><strong>FDAT</strong> (FLEx Discourse Analysis Tool)</a>, a companion web app for visualising and analysing discourse structure.</li>
-      <li>Have suggestions, bug reports, or want to contribute? <a href="https://github.com/rulingAnts/biblical_languages_flex" target="_blank" rel="noopener">Visit the project on GitHub</a> to open an issue or pull request.</li>
+  </div>
+
+  <div class="card" id="workflow">
+    <h2 style="margin-top:0;">Complete Workflow</h2>
+
+    <p>This tool is one part of a larger workflow for preparing NT Greek interlinear texts in FLEx for discourse analysis. Here is the full picture from start to finish.</p>
+
+    <h3 style="border-top:1px solid #e4e4e4;padding-top:1rem;margin-top:1rem;">
+      Phase 1 &mdash; One-time setup
+    </h3>
+    <p class="muted">Do these steps once before your first import.</p>
+
+    <ol class="workflow-steps">
+      <li>
+        <strong>Install FLEx (FieldWorks Language Explorer)</strong><br>
+        Download and install <a href="https://software.sil.org/fieldworks/" target="_blank" rel="noopener">FLEx from SIL</a> (Windows only). FLEx is the linguistic database and text-charting environment this whole workflow is built around.
+      </li>
+      <li>
+        <strong>Install FLExTools</strong><br>
+        Download and install <a href="https://github.com/rmlockwood/FLExTools" target="_blank" rel="noopener">FLExTools</a> — a free utility that lets you run Python scripts directly against your FLEx project data.
+      </li>
+      <li>
+        <strong>Install the FLEx Gloss Splitter module</strong><br>
+        This module (built for this project) splits multi-sense glosses like <code>in/on/at</code> into individual candidate glosses after import, marking each word blue so you can approve the correct meaning. Install it into FLExTools using either method below.
+        <div style="margin-top:.75rem;">
+          <a class="btn-download" href="https://github.com/rulingAnts/biblical_languages_flex/releases/latest/download/FLExGlossSplitterModuleSetup.exe">⬇ Download Installer (.exe)</a>
+          &nbsp;
+          <a class="btn-download secondary" href="https://github.com/rulingAnts/biblical_languages_flex/releases/latest/download/Split_Slash_Glosses.py">⬇ Download .py file</a>
+        </div>
+        <details style="margin-top:.75rem;">
+          <summary style="cursor:pointer;" class="muted">Show installation instructions</summary>
+          <div style="margin-top:.5rem;padding-left:1rem;border-left:3px solid #e4e4e4;">
+            <p><strong>Installer (recommended):</strong> Run <em>FLExGlossSplitterModuleSetup.exe</em>. It will locate your FLExTools Modules folder automatically (or prompt you to browse). Restart FLExTools when done.</p>
+            <p><strong>Manual:</strong> Copy <em>Split_Slash_Glosses.py</em> into your FLExTools <code>Modules</code> folder (e.g. <code>C:\Users\you\AppData\Local\FLExTools\Modules\</code>). Restart FLExTools when done.</p>
+          </div>
+        </details>
+      </li>
+      <li>
+        <strong>Open the NT Greek project template in FLEx</strong><br>
+        Download the pre-configured FLEx project below and restore it. It includes the correct Greek and English writing systems, morphological category lists, and pre-built text chart templates — saving significant setup time.
+        <div style="margin-top:.5rem;">
+          <a class="btn-download" id="flex-template-link" href="assets/NT%20Greek%20blank%20project.fwbackup" download>⬇ Download FLEx Project Template (.fwbackup)</a>
+        </div>
+        <p class="muted" style="margin-top:.4rem;">In FLEx: <strong>File &rarr; Project Management &rarr; Restore a Project</strong> and select the downloaded file.</p>
+      </li>
+    </ol>
+
+    <h3 style="border-top:1px solid #e4e4e4;padding-top:1rem;margin-top:1rem;">
+      Phase 2 &mdash; Import and analyse a passage
+    </h3>
+    <p class="muted">Repeat these steps for each passage you want to study.</p>
+
+    <ol class="workflow-steps">
+      <li>
+        <strong>Generate the .flextext file</strong><br>
+        Use the tool at the top of this page: select a book, enter a passage reference, click <em>Load</em>, then click <em>Generate .flextext</em> and save the downloaded file.
+      </li>
+      <li>
+        <strong>Import into FLEx</strong><br>
+        In FLEx, open your NT Greek project and go to the <strong>Texts &amp; Words</strong> area. Choose <strong>File &rarr; Import &rarr; FLExText interlinear…</strong> and select the .flextext file you just saved. The passage will appear as a new interlinear text with Greek words, morphological parsing, and English glosses already filled in.
+      </li>
+      <li>
+        <strong>Split multi-sense glosses with FLEx Gloss Splitter</strong><br>
+        Many words import with slash-separated glosses (e.g. <code>in/on/at</code>) reflecting all possible senses. Open FLExTools, select <em>Split Slash Glosses</em> from the module list, choose the text(s) you just imported, and run it. Each multi-sense word is split into individual candidate glosses and marked <span style="color:#2255cc;font-weight:600;">blue</span> — ready for your approval.
+        <p class="muted" style="margin-top:.25rem;">You must close FLEx before running FLExTools and reopen it afterward.</p>
+      </li>
+      <li>
+        <strong>Approve glosses for each blue word</strong><br>
+        Back in FLEx, work through the blue (unapproved) words in the interlinear view. Click each one to see the candidate glosses, then select the correct meaning for this context. The word turns black once approved.
+      </li>
+      <li>
+        <strong>Analyse the text with the Text Chart tool</strong><br>
+        Switch to the <strong>Text Chart</strong> view in FLEx. The passage is ready to chart for clause structure, participant tracking, discourse features, and more.
+      </li>
+      <li>
+        <strong>(Optional) Visualise and export with FDAT</strong><br>
+        Export your completed text chart from FLEx and load it into <a href="https://rulingants.github.io/fdat/" target="_blank" rel="noopener"><strong>FDAT (FLEx Discourse Analysis Tool)</strong></a> — a companion web app for visualising and exploring discourse structure across a passage or book.
+      </li>
     </ol>
   </div>
 
   <div class="card" id="downloads">
-    <h3>Downloads</h3>
-    <ul>
-      <li><a id="flex-template-link" href="assets/NT%20Greek%20blank%20project.fwbackup" download>FLEx Project template (.fwbackup)</a> — <em>required for importing; open this in FLEx before importing your .flextext</em></li>
+    <h3>All Downloads</h3>
+    <ul style="line-height:2;">
+      <li><a id="flex-template-link-footer" href="assets/NT%20Greek%20blank%20project.fwbackup" download>FLEx Project template (.fwbackup)</a> — pre-configured NT Greek project for FLEx</li>
+      <li><a href="https://github.com/rulingAnts/biblical_languages_flex/releases/latest/download/FLExGlossSplitterModuleSetup.exe">FLEx Gloss Splitter installer (.exe)</a> — installs the FLExTools module</li>
+      <li><a href="https://github.com/rulingAnts/biblical_languages_flex/releases/latest/download/Split_Slash_Glosses.py">Split_Slash_Glosses.py</a> — the module file for manual install</li>
+      <li><a href="https://github.com/rulingAnts/biblical_languages_flex/releases/" target="_blank" rel="noopener">All releases on GitHub</a> — including previous versions</li>
     </ul>
     <details style="margin-top:.5rem;">
       <summary class="muted" style="cursor:pointer;">Optional / advanced downloads</summary>

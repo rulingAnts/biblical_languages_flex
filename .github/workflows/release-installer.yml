@@ -4,14 +4,12 @@ name: Build & Release Installer
 #   - Push a version tag (e.g. git tag v1.0.0 && git push origin v1.0.0)
 #     → builds the installer and publishes a full GitHub Release.
 #   - Manual run via the Actions tab (workflow_dispatch)
-#     → builds the installer and publishes a pre-release on GitHub so you
-#       have a real, shareable download link for test builds.
+#     → builds the installer and publishes a pre-release for test builds.
 #       Provide a version label such as "v1.0.0-beta.1" when prompted.
 #
 # Output: FLExGlossSplitterModuleSetup.exe
-#   A Windows installer that copies Split_Slash_Glosses.py into the user's
-#   FLExTools Modules folder.  No Python bundling required — the module runs
-#   inside FLExTools which already ships with its own Python + LCM bindings.
+#   Installs FLExTools (if missing or outdated) then copies
+#   Split_Slash_Glosses.py into the FLExTools Modules folder.
 
 on:
   push:
@@ -25,7 +23,7 @@ on:
         default: 'v0.0.0-test'
 
 permissions:
-  contents: write   # required to create GitHub Releases
+  contents: write
 
 jobs:
   build-installer:
@@ -39,21 +37,63 @@ jobs:
         uses: actions/checkout@v4
 
       # ------------------------------------------------------------------ #
-      # 2. Inno Setup 6 → Windows installer                                 #
-      #    (No Python/PyInstaller step needed — the module is a plain .py   #
-      #     file that FLExTools runs with its own bundled Python.)           #
+      # 2. Download latest FLExTools release                                 #
+      #    Fetches the zip and extracts the clean semver (X.Y.Z) for the    #
+      #    version-comparison logic in the Inno Setup [Code] section.        #
+      #    Also downloads FLExTools' LICENSE for LGPL compliance.            #
+      # ------------------------------------------------------------------ #
+      - name: Download FLExTools
+        id: flextools
+        shell: pwsh
+        run: |
+          $release = Invoke-RestMethod `
+            "https://api.github.com/repos/cdfarrow/flextools/releases/latest"
+
+          # Find the zip asset
+          $asset = $release.assets |
+            Where-Object { $_.name -like "FlexTools_*.zip" } |
+            Select-Object -First 1
+
+          if (-not $asset) {
+            Write-Error "No FlexTools_*.zip asset found in latest release"
+            exit 1
+          }
+
+          # Extract a clean X.Y.Z version from the tag (e.g. v2.3.2_2025.6.26 → 2.3.2)
+          $rawTag = $release.tag_name           # e.g. "v2.3.2_2025.6.26"
+          $semver = ($rawTag -replace '^v', '' -replace '_.*$', '')
+          Write-Host "FLExTools release tag : $rawTag"
+          Write-Host "FLExTools semver      : $semver"
+          Write-Host "Download URL          : $($asset.browser_download_url)"
+
+          Invoke-WebRequest -Uri $asset.browser_download_url `
+            -OutFile "installer\FlexTools.zip"
+
+          # Fetch FLExTools LICENSE (required for LGPL redistribution)
+          Invoke-WebRequest `
+            -Uri "https://raw.githubusercontent.com/cdfarrow/flextools/main/LICENSE.txt" `
+            -OutFile "installer\FlexTools_LICENSE.txt"
+
+          "version=$semver" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      # ------------------------------------------------------------------ #
+      # 3. Install Inno Setup 6 and compile the installer                   #
       # ------------------------------------------------------------------ #
       - name: Install Inno Setup 6
         run: choco install innosetup --yes --no-progress
 
       - name: Compile installer with Inno Setup
         run: |
-          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\setup_module.iss
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" `
+            /DFLEXTOOLS_VERSION="${{ steps.flextools.outputs.version }}" `
+            installer\setup_module.iss
 
       # ------------------------------------------------------------------ #
-      # 3. Publish GitHub Release                                            #
-      #    - Tag push   → full release, auto-generated notes                 #
-      #    - Manual run → pre-release, labelled with the version input       #
+      # 4. Publish GitHub Release                                            #
+      #    Attach the installer, the raw .py module, and the FLEx project   #
+      #    template so users can download any piece individually.            #
+      #    - Tag push   → full release with auto-generated notes             #
+      #    - Manual run → pre-release labelled with the version input        #
       # ------------------------------------------------------------------ #
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -64,20 +104,25 @@ jobs:
           files: |
             installer\Output\FLExGlossSplitterModuleSetup.exe
             tools\Split_Slash_Glosses.py
+            flex-template\NT Greek blank project.fwbackup
           fail_on_unmatched_files: true
           body: |
             ## Installation
 
             ### Option 1 — Installer (recommended)
             1. Download **FLExGlossSplitterModuleSetup.exe** below and run it.
-            2. The installer will locate your FLExTools Modules folder automatically. If it can't find it, you'll be prompted to browse to it.
+            2. The installer will check for FLEx, install FLExTools if needed, and copy the module into place automatically.
             3. Restart FLExTools — **Split Slash Glosses** will appear in the module list.
 
             ### Option 2 — Manual install
-            1. Download **Split_Slash_Glosses.py** below.
-            2. Copy it into your FLExTools `Modules` folder (e.g. `C:\Users\you\AppData\Local\FLExTools\Modules\`).
+            1. Install [FLEx](https://software.sil.org/fieldworks/) and [FLExTools](https://github.com/cdfarrow/flextools/releases) if you haven't already.
+            2. Download **Split_Slash_Glosses.py** below and copy it into your FLExTools `Modules` folder (e.g. `C:\Users\you\AppData\Local\FLExTools\Modules\`).
             3. Restart FLExTools — **Split Slash Glosses** will appear in the module list.
 
+            ### FLEx Project Template
+            Download **NT Greek blank project.fwbackup** below — a pre-configured FLEx project with NT Greek writing systems, morphological categories, and text-chart templates ready to go.
+            In FLEx: **File → Project Management → Restore a Project** and select the downloaded file.
+
             ### Requirements
-            - [FLEx (FieldWorks Language Explorer)](https://software.sil.org/fieldworks/) — must be installed for the module to run
-            - [FLExTools](https://github.com/rmlockwood/FLExTools) — the host application that runs this module
+            - [FLEx (FieldWorks Language Explorer)](https://software.sil.org/fieldworks/) — must be installed
+            - [FLExTools](https://github.com/cdfarrow/flextools/releases) — installed automatically by the installer if missing
