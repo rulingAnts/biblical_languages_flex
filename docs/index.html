@@ -116,8 +116,22 @@
       </li>
       <li>
         <strong>Split multi-sense glosses with FLEx Gloss Splitter</strong><br>
-        Many words import with slash-separated glosses (e.g. <code>in/on/at</code>) reflecting all possible senses. Open FLExTools, select <em>Split Slash Glosses</em> from the module list, choose the text(s) you just imported, and run it. Each multi-sense word is split into individual candidate glosses and marked <span style="color:#2255cc;font-weight:600;">blue</span> — ready for your approval.
-        <p class="muted" style="margin-top:.25rem;">You must close FLEx before running FLExTools and reopen it afterward.</p>
+        Many words import with slash-separated glosses (e.g. <code>in/on/at</code>) reflecting all possible senses. The Gloss Splitter module breaks each one into individual candidate glosses and marks the word <span style="color:#2255cc;font-weight:600;">blue</span> — ready for your approval.
+        <details style="margin-top:.75rem;">
+          <summary style="cursor:pointer;" class="muted">Show step-by-step instructions</summary>
+          <div style="margin-top:.5rem;padding-left:1rem;border-left:3px solid #e4e4e4;">
+            <ol style="margin:0;padding-left:1.2rem;line-height:2;">
+              <li><strong>Close FLEx completely.</strong> FLExTools opens the project database directly — FLEx must not be running at the same time.</li>
+              <li>Launch <strong>FLExTools</strong> from the Start Menu (<em>Start &rarr; FLExTools &rarr; FLExTools</em>).<br>
+                  <span class="muted">FLExTools is a separate application — it is not a menu inside FLEx.</span></li>
+              <li>In the <strong>Project</strong> drop-down at the top of FLExTools, select your NT Greek project.</li>
+              <li>In the module list on the left, find and click <strong>Split Slash Glosses</strong>.</li>
+              <li>In the panel on the right, select the text(s) you just imported — or select all texts if you want to process everything.</li>
+              <li>Click <strong>Run</strong>. FLExTools will process each word and split any slash-separated gloss into individual unapproved analyses.</li>
+              <li><strong>Close FLExTools</strong>, then reopen FLEx. The affected words will appear <span style="color:#2255cc;font-weight:600;">blue</span> (unapproved) in the interlinear view.</li>
+            </ol>
+          </div>
+        </details>
       </li>
       <li>
         <strong>Approve glosses for each blue word</strong><br>
