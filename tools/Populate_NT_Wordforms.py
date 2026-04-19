@@ -244,13 +244,17 @@ def load_nt_data(data_dir):
 # Confirmation dialog
 # ---------------------------------------------------------------------------
 
-def _confirm_dialog(combo_count, wf_count):
-    """Show a summary and ask the user to confirm before modifying the database."""
+def _confirm_dialog(combo_count, wf_count, existing_wf_count):
+    """
+    Show a summary and ask the user to confirm before modifying the database.
+
+    Returns (confirmed: bool, clean_first: bool).
+    """
     root = tk.Toplevel()
     root.title('Populate NT Wordforms')
-    root.geometry('540x280')
+    root.geometry('560x400')
     root.grab_set()
-    confirmed = [False]
+    result = [False, False]   # [confirmed, clean_first]
 
     ttk.Label(root,
               text='Populate NT Wordforms',
@@ -266,14 +270,39 @@ def _confirm_dialog(combo_count, wf_count):
         f'The project must be the NT Greek template (not a working project).\n\n'
         f'This cannot be easily undone. Make sure you have a backup.'
     )
-    ttk.Label(root, text=msg, justify='left', wraplength=500).pack(
-        anchor='w', padx=16, pady=(0, 12))
+    ttk.Label(root, text=msg, justify='left', wraplength=520).pack(
+        anchor='w', padx=16, pady=(0, 8))
+
+    # ── "Clean first" option ─────────────────────────────────────────────────
+    ttk.Separator(root, orient='horizontal').pack(fill=tk.X, padx=16, pady=4)
+
+    clean_var = tk.BooleanVar(value=existing_wf_count > 0)
+
+    clean_frame = ttk.Frame(root)
+    clean_frame.pack(fill=tk.X, padx=16, pady=(4, 2))
+
+    ttk.Checkbutton(
+        clean_frame,
+        text='Clean first — delete ALL existing wordforms and analyses before populating',
+        variable=clean_var,
+    ).pack(anchor='w')
+
+    clean_note_text = (
+        f'  Currently {existing_wf_count:,} WfiWordform(s) in the project. '
+        f'Checking this deletes them\n'
+        f'  all (and their owned analyses/glosses) before recreating from the JSON data.\n'
+        f'  ⚠ Only safe on the template project — any existing texts will lose their\n'
+        f'  analysis links.  Do not use on a working project.'
+    )
+    ttk.Label(root, text=clean_note_text, justify='left',
+              foreground='#884400').pack(anchor='w', padx=16, pady=(0, 8))
 
     btn_frame = ttk.Frame(root)
     btn_frame.pack(fill=tk.X, padx=16, pady=(0, 14))
 
     def on_ok():
-        confirmed[0] = True
+        result[0] = True
+        result[1] = clean_var.get()
         root.destroy()
 
     def on_cancel():
@@ -283,7 +312,54 @@ def _confirm_dialog(combo_count, wf_count):
     ttk.Button(btn_frame, text='Proceed →', command=on_ok).pack(side=tk.RIGHT, padx=(0, 6))
 
     root.wait_window()
-    return confirmed[0]
+    return result[0], result[1]
+
+
+# ---------------------------------------------------------------------------
+# Clean (delete all existing wordforms)
+# ---------------------------------------------------------------------------
+
+def _clear_all_wordforms(cache, report):
+    """
+    Delete every WfiWordform in the project, which cascade-deletes all owned
+    WfiAnalysis and WfiGloss objects.
+
+    Safe assumptions:
+      - The project is the blank NT Greek template — no interlinear texts exist,
+        so there are no ISegment.AnalysesRS references to become dangling.
+      - Called inside FLExTools' undo task, so the operation is atomic.
+
+    HVOs are collected first to avoid modifying the repository while iterating.
+
+    Returns the number of WfiWordform objects deleted.
+    """
+    log.info('_clear_all_wordforms: collecting existing wordforms...')
+    repo    = cache.ServiceLocator.GetService(IWfiWordformRepository)
+    wf_list = list(repo.AllInstances())
+    n       = len(wf_list)
+
+    log.info('  %d WfiWordform(s) found — deleting...', n)
+    report.Info(f'  Deleting {n:,} existing WfiWordform(s) '
+                f'(and their analyses/glosses)…')
+
+    deleted  = 0
+    failed   = 0
+    for wf in wf_list:
+        hvo = wf.Hvo
+        try:
+            wf.Delete()
+            deleted += 1
+            if deleted % 2000 == 0:
+                log.info('  … deleted %d / %d', deleted, n)
+                report.Info(f'  … {deleted:,} / {n:,} deleted')
+        except Exception as e:
+            failed += 1
+            log.warning('  Failed to delete WfiWordform hvo=%s: %s', hvo, e)
+
+    log.info('_clear_all_wordforms done: deleted=%d  failed=%d', deleted, failed)
+    if failed:
+        report.Warning(f'  {failed} wordform(s) could not be deleted — see log.')
+    return deleted
 
 
 # ---------------------------------------------------------------------------
@@ -467,24 +543,48 @@ def Main(project, report, modifyAllowed):
                 f'{combo_count:,} analyses to create.')
     log.info('wf_count=%d  combo_count=%d', wf_count, combo_count)
 
+    # Count existing wordforms for the dialog
+    cache = project.project
+    try:
+        repo = cache.ServiceLocator.GetService(IWfiWordformRepository)
+        existing_wf_count = sum(1 for _ in repo.AllInstances())
+    except Exception:
+        existing_wf_count = 0
+    log.info('existing_wf_count=%d', existing_wf_count)
+
     # Preview mode
     if not modifyAllowed:
         report.Info(f'\nPreview — would create:')
         report.Info(f'  {wf_count:,} WfiWordform objects')
         report.Info(f'  {combo_count:,} WfiAnalysis objects')
         report.Info(f'  {combo_count - wf_count} homograph wordforms (two analyses each)')
-        report.Info(f'\nRun again with Modify enabled to apply.')
+        report.Info(f'\nExisting wordforms in project: {existing_wf_count:,}')
+        report.Info(f'Run again with Modify enabled to apply.')
         log.info('Preview complete')
         return
 
     # Confirm with the user
-    if not _confirm_dialog(combo_count, wf_count):
+    confirmed, clean_first = _confirm_dialog(combo_count, wf_count, existing_wf_count)
+    if not confirmed:
         report.Info('Cancelled by user.')
         log.info('User cancelled')
         return
 
+    log.info('confirmed=True  clean_first=%s', clean_first)
+
+    # Optionally clean existing wordforms first
+    if clean_first:
+        report.Info('\nCleaning existing wordforms…')
+        log.info('Clean-first requested — calling _clear_all_wordforms')
+        try:
+            n_deleted = _clear_all_wordforms(cache, report)
+            report.Info(f'  Deleted {n_deleted:,} existing WfiWordform(s).')
+        except Exception:
+            log.error('_clear_all_wordforms failed', exc_info=True)
+            report.Error(f'Clean step failed — see log: {LOG_PATH}')
+            return
+
     # Run population inside FLExTools' undo task
-    cache = project.project
     report.Info('\nPopulating wordforms — this may take a few minutes…')
     log.info('Starting population...')
 
