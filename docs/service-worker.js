@@ -1,7 +1,7 @@
 /* FLEx Interlinear PWA Service Worker */
-/* Build: 2026-04-19 */
+/* Build: 2026-04-19b */
 
-const CACHE_VERSION = 'v2-2026-04-19';
+const CACHE_VERSION = 'v2-2026-04-19b';
 const CORE_CACHE = `blf-core-${CACHE_VERSION}`;
 const DATA_CACHE = `blf-data-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `blf-runtime-${CACHE_VERSION}`;
