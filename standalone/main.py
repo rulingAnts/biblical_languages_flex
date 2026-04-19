@@ -393,8 +393,7 @@ class Api:
             # Import here (not at module level) so that import errors on non-Windows
             # only surface at call time, not at module load.
             from core.flex_project import FLExProject
-            from core.importer   import create_flex_text, get_or_create_wordform
-            from core.glosses    import split_all_slash_glosses
+            from core.importer   import create_flex_text, build_analysis_cache
         except ImportError as e:
             msg = f'Could not load LCM modules: {e}'
             log.critical(msg, exc_info=True)
@@ -432,6 +431,11 @@ class Api:
 
                 cache = project.project   # raw LcmCache
 
+                # Build analysis cache from pre-populated wordforms
+                log.info('Building analysis cache…')
+                analysis_cache = build_analysis_cache(cache, ws_grc_handle)
+                log.info('Analysis cache: %d entries', len(analysis_cache))
+
                 # Create the text (wrapped in an undo task)
                 log.info('Creating interlinear text: %r', passage_ref)
                 cache.BeginUndoTask(
@@ -439,17 +443,17 @@ class Api:
                     f'Import {passage_ref}'
                 )
                 try:
-                    n_tokens = create_flex_text(
+                    result   = create_flex_text(
                         cache, project.lp,
                         ws_en_handle, ws_grc_handle,
                         passage_ref, verses,
-                        ws_trans=ws_trans_handle,
+                        analysis_cache=analysis_cache,
                     )
-                    log.info('Text created: %d token(s)', n_tokens)
-
-                    # Split slash glosses across the whole project
-                    n_split, n_total = split_all_slash_glosses(cache, ws_en)
-                    log.info('Gloss split: %d/%d', n_split, n_total)
+                    n_tokens  = result['n_tokens']
+                    n_found   = result['n_found']
+                    n_missing = result['n_missing']
+                    log.info('Text created: tokens=%d  found=%d  missing=%d',
+                             n_tokens, n_found, n_missing)
 
                     cache.EndUndoTask()
                     log.info('Undo task committed')
@@ -467,17 +471,21 @@ class Api:
             log.error(msg, exc_info=True)
             return {'ok': False, 'message': msg, 'log_path': self._log_path}
 
-        msg = (f'Imported {n_tokens} words from {passage_ref}. '
-               f'{n_split} slash glosses split into individual choices. '
+        missing_note = (f'  {n_missing} surface forms had no pre-populated analysis.'
+                        if n_missing else '')
+        msg = (f'Imported {n_tokens} word tokens from {passage_ref} '
+               f'({n_found} linked to pre-populated analyses). '
+               f'{missing_note}'
                f'Close this app and open FLEx to begin analysis.')
         log.info('import_to_flex SUCCESS: %s', msg)
         log.info('=' * 60)
         return {
-            'ok':       True,
-            'message':  msg,
-            'n_tokens': n_tokens,
-            'n_split':  n_split,
-            'log_path': self._log_path,
+            'ok':        True,
+            'message':   msg,
+            'n_tokens':  n_tokens,
+            'n_found':   n_found,
+            'n_missing': n_missing,
+            'log_path':  self._log_path,
         }
 
 
