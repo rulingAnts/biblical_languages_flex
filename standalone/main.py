@@ -127,6 +127,38 @@ class Api:
     def get_app_version(self) -> str:
         return APP_VERSION
 
+    def get_book_data(self, book: str) -> dict:
+        """
+        Return the parsed JSON data for *book* (e.g. 'Acts') as a dict,
+        or {'error': <message>} on failure.
+
+        Data is read from the canonical location resolved by _find_data_dir():
+          - PyInstaller build → _MEIPASS/assets/data/<book>.json
+          - Dev mode          → docs/assets/data/<book>.json
+
+        This replaces the JS fetch() approach, which breaks on Windows dev
+        (file:// fetch + relative path resolution is inconsistent across
+        WebView2 versions, and symlinks require admin/Developer Mode on Windows).
+        """
+        log = self._log
+        data_dir = _find_data_dir()
+        # Sanitise: only allow plain book names (letters and digits)
+        safe_book = ''.join(c for c in book if c.isalnum())
+        path = os.path.join(data_dir, f'{safe_book}.json')
+        log.debug('get_book_data: %r → %s', book, path)
+        try:
+            with open(path, encoding='utf-8') as fh:
+                data = json.load(fh)
+            log.debug('get_book_data: loaded %d verse keys for %r', len(data), book)
+            return data
+        except FileNotFoundError:
+            msg = f'Book data not found: {book} (looked in {data_dir})'
+            log.error(msg)
+            return {'error': msg}
+        except Exception as e:
+            log.error('get_book_data failed for %r: %s', book, e, exc_info=True)
+            return {'error': str(e)}
+
     # -- FLEx state checks ----------------------------------------------------
 
     def is_flex_running(self) -> bool:
@@ -463,6 +495,22 @@ def _find_frontend() -> str:
     path = os.path.join(base, 'index.html')
     logging.getLogger(__name__).debug('Frontend path: %s', path)
     return path
+
+
+def _find_data_dir() -> str:
+    """
+    Return the absolute path to the NT Greek book JSON data directory.
+
+    - Frozen (PyInstaller build): files landed in _MEIPASS/assets/data/
+    - Dev (python main.py):       ../docs/assets/data/ relative to this file
+      Works on both Windows and macOS without symlinks.
+    """
+    if getattr(sys, 'frozen', False):
+        return os.path.join(sys._MEIPASS, 'assets', 'data')
+    return os.path.normpath(
+        os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                     '..', 'docs', 'assets', 'data')
+    )
 
 
 def main():

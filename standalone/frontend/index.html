@@ -272,10 +272,19 @@ function parseRange(ref) {
 async function ensureBookLoaded(book) {
   if (!book) throw new Error('No book selected.');
   if (bookCache[book]) return;
-  const path = `assets/data/${encodeURIComponent(book)}.json`;
-  const res  = await fetch(path);
-  if (!res.ok) throw new Error(`Book data not found for ${book} (${res.status})`);
-  bookCache[book] = await res.json();
+  const api = pyapi();
+  if (api) {
+    // Normal path: Python bridge resolves the correct data directory on any OS.
+    const data = await api.get_book_data(book);
+    if (data && data.error) throw new Error(data.error);
+    bookCache[book] = data;
+  } else {
+    // Fallback: direct fetch for browser-based testing only (not in pywebview).
+    const path = `assets/data/${encodeURIComponent(book)}.json`;
+    const res  = await fetch(path);
+    if (!res.ok) throw new Error(`Book data not found for ${book} (${res.status})`);
+    bookCache[book] = await res.json();
+  }
 }
 
 function sliceVerses(bookData, passage) {
@@ -490,11 +499,9 @@ async function init() {
   currentBook   = 'Acts';
   bookSel.value = currentBook;
 
-  setStatus('Loading Acts…');
-  try {
-    await ensureBookLoaded(currentBook);
-    setStatus('Acts loaded. Enter a reference and click Load passage.');
-  } catch(e) { setStatus('Error: '+e.message, 'err'); }
+  // Book data is loaded via the Python bridge (api.get_book_data), so we wait
+  // for the bridge before attempting the initial load.  Show a holding message.
+  setStatus('Waiting for app to initialise…');
 
   // Wait for pywebview bridge (injected asynchronously after window loads)
   let tries = 0;
@@ -504,7 +511,13 @@ async function init() {
       await onBridgeReady();
     } else if (++tries > 50) {
       clearInterval(poll);
-      console.warn('pywebview bridge not available');
+      // Bridge never arrived — try fetch fallback so the app is still usable
+      // when opened directly in a browser for testing.
+      setStatus('Loading Acts…');
+      try {
+        await ensureBookLoaded(currentBook);
+        setStatus('Acts loaded. Enter a reference and click Load passage.');
+      } catch(e) { setStatus('Error: '+e.message, 'err'); }
     }
   }, 100);
 }
@@ -517,6 +530,13 @@ async function onBridgeReady() {
 
   // FLEx check
   await checkFlexRunning();
+
+  // Load initial book data now that the bridge is ready
+  setStatus('Loading Acts…');
+  try {
+    await ensureBookLoaded(currentBook);
+    setStatus('Acts loaded. Enter a reference and click Load passage.');
+  } catch(e) { setStatus('Error: '+e.message, 'err'); }
 
   // Suggest found projects
   try {
