@@ -15,8 +15,9 @@ block_cipher = None
 # ── Data files to bundle ────────────────────────────────────────────────────
 
 # Pre-processed NT Greek JSON data (one file per book, ~27 files)
+# Single source of truth lives in docs/assets/data/ — no duplication needed.
 json_data = [
-    (os.path.join('frontend', 'assets', 'data', '*.json'),
+    (os.path.join('..', 'docs', 'assets', 'data', '*.json'),
      os.path.join('assets', 'data')),
 ]
 
