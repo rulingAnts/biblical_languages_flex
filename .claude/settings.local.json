@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C /Users/Seth/GIT/biblical_languages_flex log --oneline -10)",
+      "Bash(python3 -c \"import ast; ast.parse\\(open\\('tools/flex_gloss_splitter.py'\\).read\\(\\)\\); print\\('Syntax OK'\\)\")",
+      "WebFetch(domain:github.com)",
+      "WebSearch",
+      "Bash(xargs cat *)",
+      "Bash(find /tmp/FieldWorks -name \"*.py\" -type f -exec grep -l \"IWfiGloss\\\\|IWfiAnalysis\\\\|GlossesOS\\\\|AnalysesRS\" {} \\\\;)",
+      "Bash(find /tmp/FLExTools -name \"*.py\" -type f -exec grep -l \"\\\\.Analysis\\\\|WfiGloss\\\\|WfiAnalysis\" {} \\\\;)",
+      "Bash(git pull *)",
+      "Bash(curl -s https://api.github.com/repos/cdfarrow/flextools/releases)",
+      "Bash(curl -s \"https://api.github.com/repos/cdfarrow/flexlibs/contents/README.md\")",
+      "Bash(curl -s \"https://raw.githubusercontent.com/cdfarrow/flexlibs/main/README.md\")",
+      "Bash(gh workflow *)",
+      "Bash(gh api *)",
+      "Bash(gh run *)",
+      "Bash(gh release *)",
+      "WebFetch(domain:api.github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:downloads.languagetechnology.org)",
+      "WebFetch(domain:pypi.org)",
+      "WebFetch(domain:software.sil.org)",
+      "WebFetch(domain:community.zemax.com)",
+      "WebFetch(domain:mail.python.org)",
+      "Bash(python3 -c \"import sys,json; data=json.load\\(sys.stdin\\); [print\\(f['path']\\) for f in data.get\\('tree',[]\\) if f['path'].endswith\\('.py'\\)]\")",
+      "Bash(git checkout *)",
+      "Bash(ln -s ../../../docs/assets/data data)",
+      "Bash(git rm *)",
+      "Bash(python3 -c ' *)",
+      "WebFetch(domain:code.google.com)",
+      "WebFetch(domain:thehypotheticallinguist.blogspot.com)",
+      "Bash(git -C \"/Users/Seth/GIT/biblical_languages_flex\" log --oneline -5)",
+      "Bash(python3 -)",
+      "Bash(python3 tools/extract_guid_map.py)"
+    ]
+  }
+}

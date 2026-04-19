@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<ProjectLexiconSettings projectSharing="false">
+  <WritingSystems addToSldr="true">
+    <WritingSystem id="en">
+      <Abbreviation>Eng</Abbreviation>
+      <LanguageName>English</LanguageName>
+      <SystemCollation>en</SystemCollation>
+    </WritingSystem>
+    <WritingSystem id="grc">
+      <Abbreviation>Anc</Abbreviation>
+      <LanguageName>Ancient Greek (to 1453)</LanguageName>
+      <SystemCollation />
+    </WritingSystem>
+  </WritingSystems>
+</ProjectLexiconSettings>

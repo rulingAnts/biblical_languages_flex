@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<UserLexiconSettings>
+  <WritingSystems>
+    <WritingSystem id="en">
+      <LocalKeyboard>en-US_US_US</LocalKeyboard>
+      <DefaultFontName>Times New Roman</DefaultFontName>
+    </WritingSystem>
+    <WritingSystem id="grc">
+      <LocalKeyboard>en-US_US_US</LocalKeyboard>
+      <KnownKeyboards>
+        <KnownKeyboard>en-US_US_US</KnownKeyboard>
+      </KnownKeyboards>
+      <DefaultFontName>Galatia SIL</DefaultFontName>
+    </WritingSystem>
+  </WritingSystems>
+</UserLexiconSettings>
