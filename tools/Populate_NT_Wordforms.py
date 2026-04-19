@@ -501,9 +501,15 @@ def Main(project, report, modifyAllowed):
 
     # Writing systems
     try:
-        ws_en  = project.lp.DefaultAnalysisWritingSystem.Handle
-        ws_grc = project.lp.DefaultVernacularWritingSystem.Handle
-        log.info('ws_en=%s  ws_grc=%s', ws_en, ws_grc)
+        ws_en  = int(project.lp.DefaultAnalysisWritingSystem.Handle)
+        ws_grc = int(project.lp.DefaultVernacularWritingSystem.Handle)
+        ws_en_id  = project.lp.DefaultAnalysisWritingSystem.Id
+        ws_grc_id = project.lp.DefaultVernacularWritingSystem.Id
+        log.info('ws_en=%s (%s)  ws_grc=%s (%s)', ws_en, ws_en_id, ws_grc, ws_grc_id)
+        report.Info(f'Writing systems: analysis="{ws_en_id}" handle={ws_en} | '
+                    f'vernacular="{ws_grc_id}" handle={ws_grc}')
+        if ws_en == 0:
+            report.Warning('ws_en handle is 0 — analysis writing system may not be configured correctly.')
     except Exception:
         log.critical('Could not read writing systems', exc_info=True)
         report.Error(f'Could not read writing systems. See log: {LOG_PATH}')
