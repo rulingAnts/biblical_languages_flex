@@ -25,6 +25,7 @@ Verse data format received from the JS frontend:
 """
 
 import logging
+import unicodedata
 
 log = logging.getLogger(__name__)
 
@@ -59,7 +60,7 @@ def build_analysis_cache(lcm_cache, ws_grc: int) -> dict:
             form_ts = wf.Form.get_String(ws_grc)
             if not form_ts or not form_ts.Text:
                 continue
-            surface  = form_ts.Text
+            surface  = unicodedata.normalize('NFC', form_ts.Text)
             analyses = list(wf.AnalysesOC)
 
             if not analyses:
@@ -125,10 +126,10 @@ def create_flex_text(lcm_cache, lp, ws_en: int, ws_grc: int,
     # ── IText ────────────────────────────────────────────────────────────
     text = sl.GetService(ITextFactory).Create()
     try:
-        lp.TextsOC.Add(text)
-    except Exception as e:
-        log.warning('lp.TextsOC.Add failed (%s) — trying lp.Texts', e)
         lp.Texts.Add(text)
+    except Exception as e:
+        log.error('Could not add IText to project: %s', e)
+        raise
     text.Name.set_String(ws_en, TsStringUtils.MakeString(book_name, ws_en))
     log.info('IText hvo=%s  name=%r', text.Hvo, book_name)
 
@@ -155,7 +156,7 @@ def create_flex_text(lcm_cache, lp, ws_en: int, ws_grc: int,
         # ── ISegment ──────────────────────────────────────────────────────
         seg = seg_factory.Create()
         para.SegmentsOS.Add(seg)
-        seg.BeginOffset = 0
+        # BeginOffset is read-only; LCM sets it automatically to 0 for the first segment
 
         if trans:
             seg.FreeTranslation.set_String(
@@ -167,9 +168,9 @@ def create_flex_text(lcm_cache, lp, ws_en: int, ws_grc: int,
             if not surface:
                 continue
             n_tokens += 1
-            ianalysis = analysis_cache.get(surface)
+            ianalysis = analysis_cache.get(unicodedata.normalize('NFC', surface))
             if ianalysis is not None:
-                seg.AnalysesRS.Append(ianalysis)
+                seg.AnalysesRS.Add(ianalysis)
                 n_found += 1
             else:
                 n_missing += 1

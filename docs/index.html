@@ -58,6 +58,9 @@
     <p class="muted" style="margin-top:6px;">
       Tip: for the easiest import into FieldWorks, use the FLEx Project template in the <a href="#downloads">Downloads</a> section below.
     </p>
+    <p class="muted" style="margin-top:4px;">
+      ⚠️ Word analyses only link correctly if your FLEx project was created from the <strong>NT Greek blank project template dated 2026-04-19 or later</strong>. Importing into any other project will still create a readable interlinear text, but words will be unlinked from the pre-populated gloss options.
+    </p>
 
     <div id="status" class="muted" style="margin-top:10px;"></div>
 
@@ -66,9 +69,9 @@
   </div>
 
   <div class="card" id="workflow">
-    <h2 style="margin-top:0;">Complete Workflow</h2>
+    <h2 style="margin-top:0;">Workflow</h2>
 
-    <p>This tool is one part of a larger workflow for preparing NT Greek interlinear texts in FLEx for discourse analysis. Here is the full picture from start to finish.</p>
+    <p>This tool is one part of a workflow for preparing NT Greek interlinear texts in FLEx for discourse analysis.</p>
 
     <h3 style="border-top:1px solid #e4e4e4;padding-top:1rem;margin-top:1rem;">
       Phase 1 &mdash; One-time setup
@@ -81,22 +84,13 @@
         Download and install <a href="https://software.sil.org/fieldworks/" target="_blank" rel="noopener">FLEx from SIL</a> (Windows only). FLEx is the linguistic database and text-charting environment this whole workflow is built around.
       </li>
       <li>
-        <strong>Run the FLEx Gloss Splitter installer</strong><br>
-        This installs the Gloss Splitter module and everything else it needs — Python and FLExTools are installed automatically if they are not already present. You do not need to install them separately.
-        <div style="margin-top:.75rem;">
-          <a class="btn-download" href="https://github.com/rulingAnts/biblical_languages_flex/releases/latest/download/FLExGlossSplitterModuleSetup.exe">⬇ Download Installer (.exe)</a>
-        </div>
-        <p class="muted" style="margin-top:.5rem;">
-          Prefer to install manually? See the <a href="manual-install.html">Manual Install guide</a>.
-        </p>
-      </li>
-      <li>
-        <strong>Download and open the NT Greek project template</strong><br>
-        A pre-configured FLEx project with the correct Greek and English writing systems, morphological category lists, and text chart templates already set up — saving significant manual configuration.
+        <strong>Download and restore the NT Greek project template</strong><br>
+        A pre-configured FLEx project with all 21,000+ NT Greek surface forms pre-loaded with gloss options, plus the correct writing systems and text chart templates already set up.
         <div style="margin-top:.5rem;">
-          <a class="btn-download" id="flex-template-link" href="assets/NT%20Greek%20blank%20project.fwbackup" download>⬇ Download NT Greek Project Template (.fwbackup)</a>
+          <a class="btn-download" id="flex-template-link" href="assets/NT%20Greek%20blank%20project%20v1.fwbackup" download>⬇ Download NT Greek Project Template v1 (.fwbackup)</a>
         </div>
         <p class="muted" style="margin-top:.4rem;">In FLEx: <strong>File &rarr; Project Management &rarr; Restore a Project</strong> and select the downloaded file.</p>
+        <p class="muted">You must use <strong>template v1 (April 2026) or a later version</strong> for word analyses to link correctly on import. Older projects or unrelated projects will still import the text, but words will not connect to the pre-populated gloss options.</p>
       </li>
     </ol>
 
@@ -108,50 +102,48 @@
     <ol class="workflow-steps">
       <li>
         <strong>Generate the .flextext file</strong><br>
-        Use the tool at the top of this page: select a book, enter a passage reference, click <em>Load</em>, then click <em>Generate .flextext</em> and save the downloaded file.
+        Use the tool at the top of this page: select a book, enter a passage reference (e.g. <code>6:1-7</code>), click <em>Load</em>, then <em>Generate .flextext</em> and save the file.
       </li>
       <li>
         <strong>Import into FLEx</strong><br>
-        In FLEx, open your NT Greek project and go to the <strong>Texts &amp; Words</strong> area. Choose <strong>File &rarr; Import &rarr; FLExText interlinear…</strong> and select the .flextext file you just saved. The passage will appear as a new interlinear text with Greek words, morphological parsing, and English glosses already filled in.
+        In FLEx, open your NT Greek project. Go to the <strong>Texts &amp; Words</strong> area and choose <strong>File &rarr; Import &rarr; FLEx Interlinear Text&hellip;</strong> and select the .flextext file you just saved.<br>
+        The passage appears as a new interlinear text. Words with a single gloss are <strong>approved (shown in black)</strong> immediately. Words with multiple possible glosses are <strong>unapproved (shown in blue)</strong> — ready for your review.
       </li>
       <li>
-        <strong>Split multi-sense glosses with FLEx Gloss Splitter</strong><br>
-        Many words import with slash-separated glosses (e.g. <code>in/on/at</code>) reflecting all possible senses. The Gloss Splitter module breaks each one into individual candidate glosses. Each affected word is marked unapproved — shown as a <span style="background:#cce0ff;padding:0 3px;border-radius:2px;">blue highlighted tile</span> in the interlinear view — ready for your approval.
-        <details style="margin-top:.75rem;">
-          <summary style="cursor:pointer;" class="muted">Show step-by-step instructions</summary>
-          <div style="margin-top:.5rem;padding-left:1rem;border-left:3px solid #e4e4e4;">
-            <ol style="margin:0;padding-left:1.2rem;line-height:2;">
-              <li><strong>Close FLEx completely.</strong> FLExTools opens the project database directly — FLEx must not be running at the same time.</li>
-              <li>Launch <strong>FLExTools</strong> from the Start Menu (<em>Start &rarr; FLExTools &rarr; FLExTools</em>).<br>
-                  <span class="muted">FLExTools is a separate application — it is not a menu inside FLEx.</span></li>
-              <li>In the <strong>Project</strong> drop-down at the top of FLExTools, select your NT Greek project.</li>
-              <li>In the module list on the left, find and click <strong>Split Slash Glosses</strong>.</li>
-              <li>In the panel on the right, select the text(s) you just imported — or select all texts if you want to process everything.</li>
-              <li>Click <strong>Run</strong>. FLExTools will process each word and split any slash-separated gloss into individual unapproved analyses.</li>
-              <li><strong>Close FLExTools</strong>, then reopen FLEx. The affected words will appear <span style="color:#2255cc;font-weight:600;">blue</span> (unapproved) in the interlinear view.</li>
-            </ol>
-          </div>
-        </details>
+        <strong>Review glosses on the Gloss tab</strong><br>
+        In Texts &amp; Words, open the imported text and click the <strong>Gloss</strong> tab. Work through the <span style="color:#2255cc;font-weight:600;">blue</span> words — click each one to see the candidate glosses and select the correct meaning for this context. The word turns black once approved.
       </li>
       <li>
-        <strong>Approve glosses for each blue word</strong><br>
-        Back in FLEx, work through the blue (unapproved) words in the interlinear view. Click each one to see the candidate glosses, then select the correct meaning for this context. The word turns black once approved.
-      </li>
-      <li>
-        <strong>Analyse the text with the Text Chart tool</strong><br>
-        Switch to the <strong>Text Chart</strong> view in FLEx. The passage is ready to chart for clause structure, participant tracking, discourse features, and more.
+        <strong>Analyse with the Text Chart</strong><br>
+        Click the <strong>Text Chart</strong> tab. The passage is ready to chart for clause structure, participant tracking, discourse features, and more.
       </li>
       <li>
         <strong>(Optional) Visualise and export with FDAT</strong><br>
-        Export your completed text chart from FLEx and load it into <a href="https://rulingants.github.io/fdat/" target="_blank" rel="noopener"><strong>FDAT (FLEx Discourse Analysis Tool)</strong></a> — a companion web app for visualising and exploring discourse structure across a passage or book.
+        Export your completed text chart from FLEx and load it into <a href="https://rulingants.github.io/fdat/" target="_blank" rel="noopener"><strong>FDAT (FLEx Discourse Analysis Tool)</strong></a> — a companion web app for visualising and exploring discourse structure.
       </li>
     </ol>
+
+    <h3 style="border-top:1px solid #e4e4e4;padding-top:1rem;margin-top:1rem;">A note on the Lexicon and morpheme analysis</h3>
+    <p>FLEx's Lexicon and morpheme-level analysis features are <strong>not required</strong> for this workflow — you can go straight from the Gloss tab to the Text Chart and get full value from the tool. If you enjoy exploring them, feel free; they will not interfere with anything here.</p>
+    <p class="muted">Possible future additions to the template project include a pre-populated Lexicon based on Strong's entries, morpheme lexical entries, affix templates, and parser setup — but those are longer-term goals and not part of the current release.</p>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-top:0;">Coming Soon — Standalone Desktop App</h2>
+    <p>The current workflow requires a manual import step: generate the <code>.flextext</code> file here, then go into FLEx and run <strong>File → Import</strong>. A standalone Windows app is in development that will make this a single click.</p>
+    <ul style="line-height:1.8;">
+      <li>Open the app, select your FLEx project, pick a passage, click <strong>Import</strong> — done</li>
+      <li>No <code>.flextext</code> file to manage; the text is created directly inside FLEx</li>
+      <li>Same pre-populated template project, same analysis links, same gloss options</li>
+      <li>Requires FLEx to be installed; everything else is bundled in the installer</li>
+    </ul>
+    <p class="muted">In the meantime, the web app above gives full access to all 27 NT books. The manual import step takes about 30 seconds.</p>
   </div>
 
   <div class="card" id="downloads">
     <h3>All Downloads</h3>
     <ul style="line-height:2;">
-      <li><a id="flex-template-link-footer" href="assets/NT%20Greek%20blank%20project.fwbackup" download>FLEx Project template (.fwbackup)</a> — pre-configured NT Greek project for FLEx</li>
+      <li><a id="flex-template-link-footer" href="assets/NT%20Greek%20blank%20project%20v1.fwbackup" download>NT Greek Project Template v1 (.fwbackup)</a> — pre-configured FLEx project with pre-populated wordform analyses</li>
       <li><a href="https://github.com/rulingAnts/biblical_languages_flex/releases/latest/download/FLExGlossSplitterModuleSetup.exe">FLEx Gloss Splitter installer (.exe)</a> — installs the FLExTools module</li>
       <li><a href="https://github.com/rulingAnts/biblical_languages_flex/releases/latest/download/Split_Slash_Glosses.py">Split_Slash_Glosses.py</a> — the module file for manual install</li>
       <li><a href="manual-install.html">Manual Install guide</a> — step-by-step instructions for advanced users</li>
@@ -221,9 +213,23 @@
   ];
 
   const cache = {}; // book -> json data
+  let guidMap = null;  // surface form (NFC) -> {guid, type, gls}
   let currentBook = null;
   let currentPassage = null;
   let currentVerses = null;
+
+  async function ensureGuidMapLoaded() {
+    if (guidMap) return;
+    const path = 'assets/data/guid_map.json';
+    let res;
+    try {
+      res = await fetch(path, { cache: 'no-store' });
+    } catch (e) {
+      throw new Error('Failed to fetch guid_map.json. Are you serving over http(s)?');
+    }
+    if (!res.ok) throw new Error(`guid_map.json not found (${res.status})`);
+    guidMap = await res.json();
+  }
 
   document.getElementById('load').addEventListener('click', async () => {
     status('Loading…');
@@ -252,6 +258,8 @@
         currentPassage = { book: currentBook, ...passage };
         currentVerses = sliceVerses(cache[currentBook], currentPassage);
       }
+      status('Loading word analysis map…');
+      await ensureGuidMapLoaded();
       const xml = buildFlexText(currentPassage, currentVerses);
       const blob = new Blob([xml], { type: 'application/xml' });
       const a = document.createElement('a');
@@ -259,6 +267,7 @@
       a.download = buildFilename(currentPassage);
       a.click();
       URL.revokeObjectURL(a.href);
+      status('Downloaded.');
     } catch (e) {
       status('Error: ' + e.message, true);
     }
@@ -386,90 +395,98 @@
   }
 
   function buildFlexText(passage, verses){
-    // Build a FLEx-compliant FlexText document with:
-    // - single <interlinear-text guid="..."> container
-    // - <item type="title"> and <item type="title-abbreviation">
-    // - wrappers: <paragraphs>/<phrases>/<words>
-    // - GUIDs for interlinear-text, phrase, and word
+    // Build a FLEx-compliant .flextext document.
+    // Structure: one <paragraph> per verse, one <phrase> per paragraph.
+    // Word GUIDs come from guidMap (loaded from guid_map.json) so that each
+    // token links to its pre-populated WfiGloss or WfiAnalysis in the template
+    // project — giving approved (green) or candidate (blue) glosses on import.
+    // Requires: project restored from NT Greek blank project template 2026-04-19+
 
-    // Helpers
-    const bookAbbr = (function(){
-      const M = {
-        Matthew: 'Mt', Mark: 'Mk', Luke: 'Lk', John: 'Jn', Acts: 'Ac', Romans: 'Ro',
-        '1Corinthians': '1Co', '2Corinthians': '2Co', Galatians: 'Ga', Ephesians: 'Eph',
-        Philippians: 'Php', Colossians: 'Col', '1Thessalonians': '1Th', '2Thessalonians': '2Th',
-        '1Timothy': '1Ti', '2Timothy': '2Ti', Titus: 'Tit', Philemon: 'Phm', Hebrews: 'Heb',
-        James: 'Jas', '1Peter': '1Pe', '2Peter': '2Pe', '1John': '1Jn', '2John': '2Jn', '3John': '3Jn',
-        Jude: 'Jud', Revelation: 'Rev'
-      };
-      return M[passage.book] || passage.book.slice(0,3);
-    })();
+    const BOOK_ABBR = {
+      Matthew:'Mt',Mark:'Mk',Luke:'Lk',John:'Jn',Acts:'Ac',Romans:'Ro',
+      '1Corinthians':'1Co','2Corinthians':'2Co',Galatians:'Ga',Ephesians:'Eph',
+      Philippians:'Php',Colossians:'Col','1Thessalonians':'1Th','2Thessalonians':'2Th',
+      '1Timothy':'1Ti','2Timothy':'2Ti',Titus:'Tit',Philemon:'Phm',Hebrews:'Heb',
+      James:'Jas','1Peter':'1Pe','2Peter':'2Pe','1John':'1Jn','2John':'2Jn','3John':'3Jn',
+      Jude:'Jud',Revelation:'Rev'
+    };
+    const bookAbbr = BOOK_ABBR[passage.book] || passage.book.slice(0,3);
 
     const title = `${passage.book} ${passage.start.c}:${passage.start.v}` +
-      ((passage.end.c !== passage.start.c || passage.end.v !== passage.start.v) ? `-${passage.end.c}:${passage.end.v}` : '');
+      ((passage.end.c !== passage.start.c || passage.end.v !== passage.start.v)
+        ? `-${passage.end.c}:${passage.end.v}` : '');
+
     const titleAbbr = (function(){
-      const startPart = `${bookAbbr}${passage.start.c}_${passage.start.v}`;
-      const endPart = (passage.end.c === passage.start.c && passage.end.v === passage.start.v)
-        ? ''
-        : `-${(passage.end.c === passage.start.c) ? passage.end.v : `${passage.end.c}_${passage.end.v}`}`;
-      return `${startPart}${endPart}`;
+      const s = `${bookAbbr}${passage.start.c}_${passage.start.v}`;
+      const e = (passage.end.c === passage.start.c && passage.end.v === passage.start.v)
+        ? '' : `-${passage.end.c === passage.start.c ? passage.end.v : `${passage.end.c}_${passage.end.v}`}`;
+      return s + e;
     })();
 
     function uuidv4(){
       if (window.crypto && crypto.getRandomValues) {
-        const buf = new Uint8Array(16);
-        crypto.getRandomValues(buf);
-        // RFC4122 v4
-        buf[6] = (buf[6] & 0x0f) | 0x40;
-        buf[8] = (buf[8] & 0x3f) | 0x80;
-        const bth = Array.from(buf, b => b.toString(16).padStart(2,'0'));
-        return `${bth[0]}${bth[1]}${bth[2]}${bth[3]}-${bth[4]}${bth[5]}-${bth[6]}${bth[7]}-${bth[8]}${bth[9]}-${bth[10]}${bth[11]}${bth[12]}${bth[13]}${bth[14]}${bth[15]}`;
+        const b = new Uint8Array(16);
+        crypto.getRandomValues(b);
+        b[6] = (b[6] & 0x0f) | 0x40;
+        b[8] = (b[8] & 0x3f) | 0x80;
+        const h = Array.from(b, x => x.toString(16).padStart(2,'0'));
+        return `${h[0]}${h[1]}${h[2]}${h[3]}-${h[4]}${h[5]}-${h[6]}${h[7]}-${h[8]}${h[9]}-${h[10]}${h[11]}${h[12]}${h[13]}${h[14]}${h[15]}`;
       }
-      // Fallback
       return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
         const r = Math.random()*16|0, v = c=='x'?r:(r&0x3|0x8);
         return v.toString(16);
       });
     }
 
-    let xml = '';
-    xml += "<?xml version='1.0' encoding='utf-8'?>\n";
+    // NFC-normalize a string for guidMap lookup (matches how the map was built)
+    function nfc(s){ try { return s.normalize('NFC'); } catch(e){ return s; } }
+
+    let xml = "<?xml version='1.0' encoding='utf-8'?>\n";
     xml += '<document version="2">\n';
-    const docGuid = uuidv4(); // not used as attribute on document, but keep if needed later
-    const ilGuid = uuidv4();
-    xml += `<interlinear-text guid="${ilGuid}">\n`;
+    xml += `<interlinear-text guid="${uuidv4()}">\n`;
     xml += `  <item type="title" lang="en">${esc(title)}</item>\n`;
     xml += `  <item type="title-abbreviation" lang="en">${esc(titleAbbr)}</item>\n`;
+    xml += `  <item type="comment" lang="en">Generated by Biblical Languages for FLEx. ` +
+           `Word analyses link to NT Greek blank project template (2026-04-19 or later). ` +
+           `Importing into a project not based on that template will create unlinked wordforms.</item>\n`;
     xml += '  <paragraphs>\n';
-    xml += '    <paragraph>\n';
-    xml += '      <phrases>\n';
 
-    let seg = 1; // segment numbers start at 1 and increment per phrase
-    verses.forEach(v => {
-      const greekText = (v.words||[]).map(w => w.g).join(' ');
-      const phraseGls = v.translation || '';
-      const phraseGuid = uuidv4();
-      xml += `        <phrase guid="${phraseGuid}">\n`;
-      // Correct order: txt, segnum, words, gls
-      xml += '          <item type="txt" lang="grc">' + esc(greekText) + '</item>\n';
-      xml += '          <item type="segnum" lang="en">' + esc(seg) + '</item>\n';
+    // One <paragraph> per verse (= Enter key in FLEx; one StTxtPara each)
+    verses.forEach((v, idx) => {
+      const greekText = (v.words||[]).filter(w => w.g && w.g.trim()).map(w => w.g).join(' ');
+      const trans = v.translation || '';
+
+      xml += `    <paragraph guid="${uuidv4()}">\n`;
+      xml += '      <phrases>\n';
+      xml += `        <phrase guid="${uuidv4()}">\n`;
+      xml += `          <item type="txt" lang="grc">${esc(greekText)}</item>\n`;
+      xml += `          <item type="segnum" lang="en">${idx + 1}</item>\n`;
       xml += '          <words>\n';
+
       (v.words||[]).forEach(w => {
-        const wordGuid = uuidv4();
-        xml += `            <word guid="${wordGuid}">\n`;
-        xml += '              <item type="txt" lang="grc">' + esc(w.g) + '</item>\n';
-        if(w.gls) xml += '              <item type="gls" lang="en">' + esc(w.gls) + '</item>\n';
+        if (!w.g || !w.g.trim()) return;
+        const entry = guidMap ? guidMap[nfc(w.g.trim())] : null;
+        const guid  = entry ? entry.guid : uuidv4();
+        const glsTxt = entry ? (entry.gls || w.gls || '') : (w.gls || '');
+
+        xml += `            <word guid="${guid}">\n`;
+        xml += `              <item type="txt" lang="grc">${esc(w.g)}</item>\n`;
+        if (glsTxt) xml += `              <item type="gls" lang="en">${esc(glsTxt)}</item>\n`;
         xml += '            </word>\n';
       });
+
       xml += '          </words>\n';
-      xml += '          <item type="gls" lang="en">' + esc(phraseGls) + '</item>\n';
+      if (trans) xml += `          <item type="gls" lang="en">${esc(trans)}</item>\n`;
       xml += '        </phrase>\n';
-      seg += 1;
+      xml += '      </phrases>\n';
+      xml += '    </paragraph>\n';
     });
 
-    xml += '      </phrases>\n';
-    xml += '    </paragraph>\n';
     xml += '  </paragraphs>\n';
+    xml += '  <languages>\n';
+    xml += '    <language lang="en" font="Times New Roman" />\n';
+    xml += '    <language lang="grc" font="Galatia SIL" vernacular="true" />\n';
+    xml += '  </languages>\n';
     xml += '</interlinear-text>\n';
     xml += '</document>\n';
     return xml;

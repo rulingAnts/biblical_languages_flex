@@ -46,6 +46,7 @@ import json
 import logging
 import os
 import sys
+import unicodedata
 from datetime import datetime
 
 # ---------------------------------------------------------------------------
@@ -204,7 +205,7 @@ def _build_analysis_cache(cache, ws_grc, report):
             form_ts = wf.Form.get_String(ws_grc)
             if not form_ts or not form_ts.Text:
                 continue
-            surface = form_ts.Text
+            surface = unicodedata.normalize('NFC', form_ts.Text)
 
             analyses = list(wf.AnalysesOC)
             if not analyses:
@@ -239,7 +240,7 @@ def _build_analysis_cache(cache, ws_grc, report):
 def _existing_text_names(lp, ws_en):
     names = set()
     try:
-        for t in lp.TextsOC:
+        for t in lp.Texts:
             try:
                 ts = t.Name.get_String(ws_en)
                 if ts and ts.Text:
@@ -247,7 +248,7 @@ def _existing_text_names(lp, ws_en):
             except Exception:
                 pass
     except Exception:
-        log.debug('Could not iterate lp.TextsOC', exc_info=True)
+        log.debug('Could not iterate lp.Texts', exc_info=True)
     log.info('Existing text names: %s', sorted(names))
     return names
 
@@ -266,15 +267,10 @@ def _import_book(book_name, book_data, analysis_cache,
     # ── IText ─────────────────────────────────────────────────────────────
     text = sl.GetService(ITextFactory).Create()
     try:
-        lp.TextsOC.Add(text)
+        lp.Texts.Add(text)
     except Exception as e:
-        log.warning('lp.TextsOC.Add failed (%s) — trying WordformInventory path', e)
-        # Some FLEx versions use a different collection
-        try:
-            lp.Texts.Add(text)
-        except Exception as e2:
-            log.error('Could not add IText to project: %s', e2)
-            raise
+        log.error('Could not add IText to project: %s', e)
+        raise
 
     text.Name.set_String(ws_en, TsStringUtils.MakeString(book_name, ws_en))
     log.info('IText created hvo=%s  name=%r', text.Hvo, book_name)
@@ -317,7 +313,7 @@ def _import_book(book_name, book_data, analysis_cache,
         # ── ISegment ──────────────────────────────────────────────────────
         seg = seg_factory.Create()
         para.SegmentsOS.Add(seg)
-        seg.BeginOffset = 0
+        # BeginOffset is read-only; LCM sets it automatically to 0 for the first segment
 
         # Free translation
         if trans:
@@ -331,10 +327,10 @@ def _import_book(book_name, book_data, analysis_cache,
             if not surface:
                 continue
 
-            ianalysis = analysis_cache.get(surface)
+            ianalysis = analysis_cache.get(unicodedata.normalize('NFC', surface))
 
             if ianalysis is not None:
-                seg.AnalysesRS.Append(ianalysis)
+                seg.AnalysesRS.Add(ianalysis)
                 n_found += 1
                 log.debug('    %r → %s hvo=%s',
                           surface, type(ianalysis).__name__, ianalysis.Hvo)

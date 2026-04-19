@@ -247,7 +247,7 @@ class Api:
         else:
             base = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 '..', 'docs', 'assets')
-        template_src = os.path.join(base, 'NT Greek blank project.fwbackup')
+        template_src = os.path.join(base, 'NT Greek blank project v1.fwbackup')
         log.debug('template_src: %s  exists=%s', template_src,
                   os.path.isfile(template_src))
 
@@ -259,7 +259,7 @@ class Api:
         result = webview.windows[0].create_file_dialog(
             webview.SAVE_DIALOG,
             directory    = os.path.expanduser('~'),
-            save_filename= 'NT Greek blank project.fwbackup',
+            save_filename= 'NT Greek blank project v1.fwbackup',
             file_types   = ('FLEx Backup (*.fwbackup)', 'All files (*.*)')
         )
         if not result:

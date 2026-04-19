@@ -1,216 +1,99 @@
-# biblical_languages_flex
-This project's aim is to linguistic tools found in Fieldworks Language Explorer for exegesis and Bible study, especially through Discourse Analysis and especially in preparation for Bible Translation
+# Biblical Languages for FLEx
 
-For reference:
+Tools for preparing New Testament Greek interlinear texts in [FieldWorks Language Explorer (FLEx)](https://software.sil.org/fieldworks/) for discourse analysis and Bible study.
 
-/your_project_folder
-|-- app.py
-|-- index.html
-|-- /sword_repo
-    |-- /mods.d
-    |   |-- SBLGNT.conf
-    |   |-- RobGNT.conf
-    |   |-- StrongsGk.conf
-    |   |-- ... (and potentially other SWORD config files)
-    |-- /modules
-        |-- /texts
-            |-- SBLGNT.bbl
-            |-- RobGNT.bbl
-            |-- StrongsGk.dict
-            |-- ... (and potentially other SWORD module files)
+**Live web app:** [rulingants.github.io/biblical_languages_flex](https://rulingants.github.io/biblical_languages_flex/)
 
-## Setup
+---
 
-1) Python dependencies
+## What this is
 
-- Install Python 3.9+ and then install the Python packages:
+A two-part workflow for getting NT Greek interlinear texts into FLEx with pre-populated morphological analysis and gloss options:
 
-```
-pip3 install -r requirements.txt
-```
+1. **Web app** — select a passage, generate a `.flextext` file, import it into FLEx. Works in any modern browser, offline-capable. No installation required.
+2. **FLEx project template** — a pre-configured FLEx project with all 21,397 NT Greek surface forms pre-loaded with gloss options, so imported texts are immediately ready for analysis.
 
-2) Optional: SWORD (libsword) for dictionary lookups
+The generated `.flextext` links each word token to its pre-populated analysis in the template project:
+- Single-gloss words → **approved (green)** immediately
+- Multi-gloss words → **candidate glosses (blue)** — user selects the right sense in context
+- The free translation (LEB) appears as the segment-level English
 
-- On macOS:
+---
 
-```
-brew install sword
-```
+## Roadmap
 
-- A Python binding that exposes `from sword import Sword` is optional. If not present, the app will still run using `pysword` for MorphGNT text and a local JSON for Strong’s glosses. Place a mapping file at `data/strongs_greek.json` to enable English glosses.
+### Now available
+- **Web app** — passage selection, `.flextext` download, offline support
+- **FLEx project template** — 21,397 wordforms with pre-populated analyses and gloss options
+- **Split Slash Glosses FLExTools module** — splits slash-separated glosses into individual candidates
 
-## Running the app
+### Coming soon — Standalone desktop app (Windows)
+The web app currently requires a manual import step: generate the `.flextext`, then go into FLEx and run File → Import. A standalone Windows app is in development that will eliminate this step:
 
-```
-python3 app.py
-```
+- Pick your FLEx project, select a passage, click **Import** — done
+- The app uses FLEx's own LCM library directly, so the text is created inside FLEx in one click with no `.flextext` file to manage
+- Requires FLEx to be installed; everything else is bundled
 
-The app will try to use `python-sword` + libsword if available; otherwise it falls back to `pysword` for text and a JSON file for glosses.
+The standalone app uses the same pre-populated template project and produces the same analysis links — it is just a more seamless delivery mechanism.
 
-Supports references:
-- Single verse: `John 1:1`
-- Intra-chapter range: `John 1:1-18`
-- Cross-chapter range (same book): `John 1:1-5:14`
+---
 
-Enter the reference in the input box and click “Load Data,” then generate the `.flextext` file. For ranges, each verse becomes a separate phrase in the FlexText output. The exported FlexText:
+## Quick start
 
-- Wraps output in a `<document version="2">` with `<interlinear-text>` metadata (title and title-abbreviation)
-- Includes phrase-level Greek text and verse segment number
-- Includes phrase-level literal translation built from word glosses
-- Exports only word-level baseline and gloss (no morpheme analysis blocks)
+1. [Download and install FLEx](https://software.sil.org/fieldworks/) (Windows only)
+2. Download the [NT Greek blank project template](https://rulingants.github.io/biblical_languages_flex/assets/NT%20Greek%20blank%20project.fwbackup) and restore it in FLEx (File → Project Management → Restore a Project)
+3. Open the [web app](https://rulingants.github.io/biblical_languages_flex/), select a book and passage, click **Generate .flextext**
+4. In FLEx: File → Import → FLEx Interlinear Text → select the downloaded file
+5. The passage appears in Texts & Words with Greek text, free translation, and gloss options ready
 
-## FLEx template project (recommended)
+> **Template compatibility:** The word-analysis links in the generated `.flextext` only connect to pre-populated analyses in projects created from the NT Greek blank project template **dated 2026-04-19 or later**. Importing into any other project still creates a readable interlinear text, but words will be unlinked.
 
-This repo includes a FieldWorks Language Explorer (FLEx) blank project preconfigured for NT Greek:
+---
 
-- Path: `flex-template/NT Greek blank project.fwbackup`
-- Included in releases: yes (the backup is bundled with release files)
-
-Why use it?
-- It already has the languages and writing systems configured to match this app’s output (e.g., Greek `grc` for baseline, English `en` for glosses).
-- It includes text-charting templates suitable for NT Greek imports.
-
-How to use it:
-1) Open FieldWorks Language Explorer.
-2) Restore the project from backup using the `.fwbackup` file above (choose a project name when prompted).
-3) Use FLEx’s import feature for FlexText interlinear files to bring in the `.flextext` files generated by this app.
-4) The imported data will align with the preconfigured writing systems and analysis views in the template.
-
-## Strong's glosses (JSON fallback)
-
-The app will look for a JSON file at:
-
-- `data/strongs_greek.json` (preferred)
-- or `data/strongs_greek.sample.json` (included demo)
-
-Format:
+## Repository layout
 
 ```
-{
-    "3056": "word, message, statement, matter",
-    "2316": "God, deity, divine being"
-}
+docs/                          GitHub Pages web app
+  index.html                   Web UI (passage picker, .flextext generator)
+  assets/
+    data/                      Pre-built per-book JSON (27 NT books)
+      Acts.json, John.json …
+      guid_map.json            Surface form → WfiGloss/WfiAnalysis GUID map
+    NT Greek blank project v1.fwbackup   FLEx template (pre-populated wordforms)
+
+tools/
+  Import_NT_Text.py            FLExTools module — imports NT books via LCM (dev/testing)
+  Populate_NT_Wordforms_XML.py Developer tool — populated the template wordforms
+  Split_Slash_Glosses.py       FLExTools module — splits slash-separated glosses
+  extract_guid_map.py          Developer tool — regenerates guid_map.json from template
+
+standalone/                    Standalone desktop app (in development)
+  main.py                      pywebview entry point
+  core/
+    importer.py                LCM-based text import
+    flextext_generator.py      .flextext generator (shared with web app logic)
+    flex_project.py            Lightweight LCM project wrapper
 ```
 
-You can generate this file from an open dataset using the helper script:
+---
+
+## Updating the template
+
+If the template `.fwbackup` is updated (new wordforms added, glosses changed), regenerate `guid_map.json`:
 
 ```
-python3 tools/strongs_to_json.py \
-    --input path/to/strongs_greek.csv \
-    --output data/strongs_greek.json \
-    --num-field id --gloss-field gloss
+python3 tools/extract_guid_map.py
 ```
 
-Supported inputs:
-- CSV or TSV (use `--tsv` if tab-delimited). If no header, add `--no-header`.
-- JSON mapping (key -> gloss) or a JSON array of objects (`--num-field/--gloss-field` can help map keys).
+Then commit the updated `docs/assets/data/guid_map.json`. The web app will pick it up automatically.
 
-Numbers may be given as `G3056` or `3056`; they are normalized to digits only in output keys.
+> **Backward compatibility:** The template was first shipped 2026-04-19. All future updates must be additive — new wordforms can be added, but existing GUIDs must never change, as users may already have imported texts that reference them.
 
-### Using STEPBible TBESG (recommended open source)
-
-If you have the Tyndale Brief lexicon of Extended Strong’s for Greek (TBESG) from STEPBible (CC BY 4.0), you can convert it directly:
-
-1) Place the TBESG TSV/text file in the project root (or note its path). It usually has a header like:
-
-```
-EStrong#\tGreek\tTransliteration\tGloss\tMorph\tMeaning
-```
-
-2) Run the converter (it auto-detects header and column order variants):
-
-```
-python3 tools/strongs_to_json.py \
-    --input "TBESG.-.Tyndale.Brief.lexicon.of.Extended.Strongs.for.Greek.-.CC.BY.txt" \
-    --output data/strongs_greek.json \
-    --tsv
-```
-
-This produces `data/strongs_greek.json` with English glosses (e.g., 746 → "beginning", 3056 → "word").
-
-Attribution (required by CC BY 4.0): If you use TBESG in your app or outputs, please include a note such as:
-
-> Strong’s glosses derived from TBESG – Tyndale Brief lexicon of Extended Strong’s for Greek. Data created for www.STEPBible.org by Tyndale House Cambridge and others (CC BY 4.0).
-
-You can find STEPBible datasets and license information at https://github.com/tyndale/STEPBible-Data.
-
-## Optional: English translation line (LEB only)
-
-The app supports using the Lexham English Bible (LEB) for the phrase-level translation of each verse. It does not ship the text—add the SWORD module yourself and ensure you comply with LEB licensing.
-
-- Auto-detected module ID: `LEB`
-
-How to add LEB:
-
-1) Place `leb.conf` into `sword_repo/mods.d/` and the data files into `sword_repo/modules/leb/`.
-2) The app will auto-detect LEB and use it by default. If LEB is not available, the app falls back to a simple literal line built from word glosses.
-
-Important: LEB is not public domain. If you include it, you are responsible for complying with its license and attribution requirements (see the license link provided in `leb.conf`). The app supports user-supplied modules but does not distribute them.
-
-If no translation module is detected, the app will fall back to a simple literal line generated by concatenating word glosses.
-
-## Web (GitHub Pages) version
-
-This repo also includes a browser-only version that runs entirely from static files (no Python/server needed). It’s hosted from the `docs/` folder, which you can serve on GitHub Pages.
-
-What’s included under `docs/`:
-- `docs/index.html`: the web UI that mirrors the desktop app’s core features (reference input, preview, FlexText download)
-- `docs/assets/data/`: prebuilt per-book JSON files (e.g., `John.json`) containing words and an optional phrase-level translation
-- `docs/assets/strongs_greek.json`: Strong’s glosses derived from TBESG (CC BY 4.0)
-- `docs/sword_repo/`: packaged SWORD modules for transparency (not used by the browser directly)
-- `docs/assets/NT Greek blank project.fwbackup`: preconfigured FLEx template project download
-
-How to generate more book data (optional):
-1) Ensure the SWORD modules are available in `sword_repo/` (MorphGNT required; LEB optional if you want phrase-level English in the JSON).
-2) Run the exporter to produce per-book JSON into `docs/assets/data/`:
-
-```
-python3 tools/export_web_data.py --books John
-```
-
-You can pass multiple books as a comma-separated list, e.g. `--books John,Mark,Matthew`.
-
-Enable GitHub Pages:
-1) Push to `main`.
-2) In your GitHub repo settings → Pages, set Source to “Deploy from a branch” and Folder to `/docs`.
-3) Your site will be available at `https://<owner>.github.io/<repo>/`.
-
-### Publishing (unofficial preview)
-
-For an initial unofficial preview, this repo includes settings to avoid search engine indexing until licensing is finalized:
-
-- `docs/index.html` sets `<meta name="robots" content="noindex,nofollow">`.
-- `docs/robots.txt` disallows all crawlers.
-- `docs/.nojekyll` disables Jekyll processing (helps ensure all static files are served as-is).
-
-When you’re ready to make the site discoverable, remove the `robots` meta tag and update `docs/robots.txt` to allow indexing (or delete it).
-
-Expected URL once GitHub Pages is enabled for this repo:
-
-- `https://rulingants.github.io/biblical_languages_flex/`
-
-Notes and licensing:
-- The web app uses prebuilt JSON only; it does not load SWORD modules in the browser.
-- If the JSON includes LEB phrase-level text, ensure the required LEB attribution is displayed (it is in the web UI) and that you comply with the license.
-- Strong’s glosses (TBESG) require CC BY 4.0 attribution; this is displayed in the app and listed here.
-
-## Packaging (optional)
-
-The included `bundle.sh` shows an example `pyinstaller` command. Update the `--add-data` paths for your environment. The app includes logic to find bundled resources at runtime.
-
-## Notes
-
-- The repository contains `sword_repo/` with module configs and data for MorphGNT and Strong’s. The `.conf` files are adjusted to match the included folder layout.
-- If you later install a Python binding to libsword (exposing `from sword import Sword`), the app will automatically prefer it for Strong’s lexicon lookups.
+---
 
 ## Attributions
 
-- Greek text and morphology
-    - MorphGNT lemmatization and parsing by James Tauber (CC BY-SA). See https://github.com/morphgnt/
-    - Base text: SBL Greek New Testament (SBLGNT). Copyright © 2010 Logos Bible Software and the Society of Biblical Literature. See SBLGNT.com for license details.
-
-- Strong’s glosses
-    - Derived from TBESG – Tyndale Brief lexicon of Extended Strong’s for Greek. Data created for www.STEPBible.org by Tyndale House Cambridge and others (CC BY 4.0).
-
-- English translation (when enabled)
-    - Lexham English Bible (LEB). Scripture quotations are from the Lexham English Bible (LEB). Copyright © Logos Bible Software. Used under the LEB license. See http://www.lexhamenglishbible.com/license/ for license details.
+- **Greek text and morphology:** MorphGNT lemmatization and parsing by James Tauber (CC BY-SA). Base text: SBLGNT © 2010 Logos Bible Software and the Society of Biblical Literature.
+- **Strong's glosses:** TBESG – Tyndale Brief lexicon of Extended Strong's for Greek, from www.STEPBible.org by Tyndale House Cambridge and others (CC BY 4.0).
+- **English translation:** Lexham English Bible (LEB) © Logos Bible Software. Used under the LEB license: http://www.lexhamenglishbible.com/license/
+- **LCM wrapper:** Derived from [FLExTools](https://github.com/rmlockwood/FLExTools) by Richard Louw (LGPL-3.0).

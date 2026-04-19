@@ -1,0 +1,201 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<document version="2">
+  <interlinear-text guid="9f1534a8-2c43-40c9-ba60-8f4bfc1cdd0d">
+    <item type="title" lang="en">John 1:1-3</item>
+    <paragraphs>
+      <paragraph guid="554cf556-c35a-4e9d-ad96-562289a6fa8d">
+        <phrases>
+          <phrase guid="280251c1-27a2-4e8e-b9bc-a3c0f0a0061f">
+            <item type="txt" lang="grc">Ἐν ἀρχῇ ἦν ὁ λόγος καὶ ὁ λόγος ἦν πρὸς τὸν θεόν καὶ θεὸς ἦν ὁ λόγος</item>
+            <item type="segnum" lang="en">1</item>
+            <words>
+              <word guid="175d8471-ad35-41bd-a995-a9d912f089b7">
+                <item type="txt" lang="grc">Ἐν</item>
+                <item type="gls" lang="en">in</item>
+              </word>
+              <word guid="4298214d-66ec-4302-9729-0c8087fb0148">
+                <item type="txt" lang="grc">ἀρχῇ</item>
+                <item type="gls" lang="en">beginning</item>
+              </word>
+              <word guid="8defec41-20bf-4229-951c-4b2a1fe75add">
+                <item type="txt" lang="grc">ἦν</item>
+                <item type="gls" lang="en">be</item>
+              </word>
+              <word guid="9b829e72-6810-46ec-a7c4-460dc3edd06e">
+                <item type="txt" lang="grc">ὁ</item>
+                <item type="gls" lang="en">the</item>
+              </word>
+              <word guid="0d03ff10-8eb4-4500-b4d0-27324a9064b9">
+                <item type="txt" lang="grc">λόγος</item>
+                <item type="gls" lang="en">word</item>
+              </word>
+              <word guid="6d4893df-d3c7-49e8-8866-3907f5c310ce">
+                <item type="txt" lang="grc">καὶ</item>
+                <item type="gls" lang="en">and</item>
+              </word>
+              <word guid="9b829e72-6810-46ec-a7c4-460dc3edd06e">
+                <item type="txt" lang="grc">ὁ</item>
+                <item type="gls" lang="en">the</item>
+              </word>
+              <word guid="0d03ff10-8eb4-4500-b4d0-27324a9064b9">
+                <item type="txt" lang="grc">λόγος</item>
+                <item type="gls" lang="en">word</item>
+              </word>
+              <word guid="8defec41-20bf-4229-951c-4b2a1fe75add">
+                <item type="txt" lang="grc">ἦν</item>
+                <item type="gls" lang="en">be</item>
+              </word>
+              <word guid="f89ddc55-5245-4f75-9ee1-6b15a4585d48">
+                <item type="txt" lang="grc">πρὸς</item>
+                <item type="gls" lang="en">with</item>
+              </word>
+              <word guid="26c378de-7659-4140-9d79-45fc6640f20c">
+                <item type="txt" lang="grc">τὸν</item>
+                <item type="gls" lang="en">this</item>
+              </word>
+              <word guid="f38c6e91-4e82-4e0f-bfdf-008f4d90a372">
+                <item type="txt" lang="grc">θεόν</item>
+                <item type="gls" lang="en">God</item>
+              </word>
+              <word guid="6d4893df-d3c7-49e8-8866-3907f5c310ce">
+                <item type="txt" lang="grc">καὶ</item>
+                <item type="gls" lang="en">and</item>
+              </word>
+              <word guid="b4f3fd22-14ce-48ef-b2e3-9f84df8cd198">
+                <item type="txt" lang="grc">θεὸς</item>
+                <item type="gls" lang="en">God</item>
+              </word>
+              <word guid="8defec41-20bf-4229-951c-4b2a1fe75add">
+                <item type="txt" lang="grc">ἦν</item>
+                <item type="gls" lang="en">be</item>
+              </word>
+              <word guid="9b829e72-6810-46ec-a7c4-460dc3edd06e">
+                <item type="txt" lang="grc">ὁ</item>
+                <item type="gls" lang="en">the</item>
+              </word>
+              <word guid="0d03ff10-8eb4-4500-b4d0-27324a9064b9">
+                <item type="txt" lang="grc">λόγος</item>
+                <item type="gls" lang="en">word</item>
+              </word>
+            </words>
+            <item type="gls" lang="en">In the beginning was the Word, and the Word was with God, and the Word was God.</item>
+          </phrase>
+        </phrases>
+      </paragraph>
+      <paragraph guid="13a22dc4-50ed-42ff-bb5f-90474d7e90be">
+        <phrases>
+          <phrase guid="f4780a5a-8d98-4351-a3b1-cbd50ef638cc">
+            <item type="txt" lang="grc">οὗτος ἦν ἐν ἀρχῇ πρὸς τὸν θεόν</item>
+            <item type="segnum" lang="en">2</item>
+            <words>
+              <word guid="abfd9ea8-8606-41a5-9f0e-d297fa63a3b2">
+                <item type="txt" lang="grc">οὗτος</item>
+                <item type="gls" lang="en">she</item>
+              </word>
+              <word guid="8defec41-20bf-4229-951c-4b2a1fe75add">
+                <item type="txt" lang="grc">ἦν</item>
+                <item type="gls" lang="en">be</item>
+              </word>
+              <word guid="47aba748-ad75-4f41-804a-ee8b1f000aa2">
+                <item type="txt" lang="grc">ἐν</item>
+                <item type="gls" lang="en">on</item>
+              </word>
+              <word guid="4298214d-66ec-4302-9729-0c8087fb0148">
+                <item type="txt" lang="grc">ἀρχῇ</item>
+                <item type="gls" lang="en">beginning</item>
+              </word>
+              <word guid="f89ddc55-5245-4f75-9ee1-6b15a4585d48">
+                <item type="txt" lang="grc">πρὸς</item>
+                <item type="gls" lang="en">with</item>
+              </word>
+              <word guid="26c378de-7659-4140-9d79-45fc6640f20c">
+                <item type="txt" lang="grc">τὸν</item>
+                <item type="gls" lang="en">this</item>
+              </word>
+              <word guid="f38c6e91-4e82-4e0f-bfdf-008f4d90a372">
+                <item type="txt" lang="grc">θεόν</item>
+                <item type="gls" lang="en">God</item>
+              </word>
+            </words>
+            <item type="gls" lang="en">This one was in the beginning with God.</item>
+          </phrase>
+        </phrases>
+      </paragraph>
+      <paragraph guid="2dd3b2ef-4d9f-409c-9e2c-632992e1ece4">
+        <phrases>
+          <phrase guid="aa88fa55-2110-4fe6-b31e-30d27680843b">
+            <item type="txt" lang="grc">πάντα δι' αὐτοῦ ἐγένετο </item>
+            <item type="segnum" lang="en">3.1</item>
+            <words>
+              <word guid="46fa7d80-0c0e-4bc3-a937-6130bd1a632f">
+                <item type="txt" lang="grc">πάντα</item>
+                <item type="gls" lang="en">all</item>
+              </word>
+              <word guid="8ff11a50-82f4-422c-9242-2cca2a96a28a">
+                <item type="txt" lang="grc">δι</item>
+              </word>
+              <word>
+                <item type="punct" lang="grc">'</item>
+              </word>
+              <word guid="bbeaae6b-a7b3-4452-a2c8-514414a31b78">
+                <item type="txt" lang="grc">αὐτοῦ</item>
+                <item type="gls" lang="en">self</item>
+              </word>
+              <word guid="87e35e88-46ea-4d6f-8ca2-047e2dc7ad46">
+                <item type="txt" lang="grc">ἐγένετο</item>
+                <item type="gls" lang="en">be</item>
+              </word>
+            </words>
+            <item type="gls" lang="en">This one was in the beginning with God.</item>
+          </phrase>
+          <phrase guid="9a4628c3-5eb0-4a3d-bd07-b0c4b045d2c5">
+            <item type="txt" lang="grc"> </item>
+          </phrase>
+          <phrase guid="8329fa73-e3b3-4725-9cba-89eed180b865">
+            <item type="txt" lang="grc">καὶ χωρὶς αὐτοῦ ἐγένετο οὐδὲ ἕν ὃ γέγονεν</item>
+            <item type="segnum" lang="en">3.3</item>
+            <words>
+              <word guid="6d4893df-d3c7-49e8-8866-3907f5c310ce">
+                <item type="txt" lang="grc">καὶ</item>
+                <item type="gls" lang="en">and</item>
+              </word>
+              <word guid="53a77986-a610-4d32-94d0-11adde420901">
+                <item type="txt" lang="grc">χωρὶς</item>
+                <item type="gls" lang="en">without</item>
+              </word>
+              <word guid="bbeaae6b-a7b3-4452-a2c8-514414a31b78">
+                <item type="txt" lang="grc">αὐτοῦ</item>
+                <item type="gls" lang="en">self</item>
+              </word>
+              <word guid="87e35e88-46ea-4d6f-8ca2-047e2dc7ad46">
+                <item type="txt" lang="grc">ἐγένετο</item>
+                <item type="gls" lang="en">be</item>
+              </word>
+              <word guid="3e677a04-b48d-469e-838d-9bdac7bc0486">
+                <item type="txt" lang="grc">οὐδὲ</item>
+                <item type="gls" lang="en">and not</item>
+              </word>
+              <word guid="32957af7-e5b4-4388-8d7d-71dcdc64767e">
+                <item type="txt" lang="grc">ἕν</item>
+                <item type="gls" lang="en">one</item>
+              </word>
+              <word guid="1d14e3bc-892b-485b-b3fb-763ad4d0bd63">
+                <item type="txt" lang="grc">ὃ</item>
+                <item type="gls" lang="en">which</item>
+              </word>
+              <word guid="67504901-ba53-48a6-afbb-751a2dddb177">
+                <item type="txt" lang="grc">γέγονεν</item>
+                <item type="gls" lang="en">be</item>
+              </word>
+            </words>
+            <item type="gls" lang="en">and apart from him not one thing came into being that has come into being.</item>
+          </phrase>
+        </phrases>
+      </paragraph>
+    </paragraphs>
+    <languages>
+      <language lang="en" font="Times New Roman" />
+      <language lang="grc" font="Galatia SIL" vernacular="true" />
+    </languages>
+  </interlinear-text>
+</document>
