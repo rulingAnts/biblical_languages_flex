@@ -1,7 +1,7 @@
 /* FLEx Interlinear PWA Service Worker */
-/* Build: 2025-11-08 */
+/* Build: 2026-04-19b */
 
-const CACHE_VERSION = 'v1-2025-11-08';
+const CACHE_VERSION = 'v2-2026-04-19b';
 const CORE_CACHE = `blf-core-${CACHE_VERSION}`;
 const DATA_CACHE = `blf-data-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `blf-runtime-${CACHE_VERSION}`;
@@ -45,7 +45,8 @@ const DATA_FILES = [
   './assets/data/Philippians.json',
   './assets/data/Revelation.json',
   './assets/data/Romans.json',
-  './assets/data/Titus.json'
+  './assets/data/Titus.json',
+  './assets/data/guid_map.json'
 ];
 
 self.addEventListener('install', event => {
