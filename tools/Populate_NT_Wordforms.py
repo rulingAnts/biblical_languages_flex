@@ -190,19 +190,60 @@ def _split_form(gls):
     return parts or ([gls.strip()] if gls.strip() else [])
 
 
-def load_nt_data(data_dir):
+def _find_strongs_file(data_dir):
+    """
+    Look for strongs_greek.json relative to data_dir.
+    It lives one level up from the data folder (e.g. assets/strongs_greek.json).
+    """
+    candidates = [
+        os.path.join(data_dir, '..', 'strongs_greek.json'),   # assets/strongs_greek.json
+        os.path.join(data_dir, 'strongs_greek.json'),          # data/strongs_greek.json
+    ]
+    for p in candidates:
+        p = os.path.normpath(p)
+        if os.path.isfile(p):
+            log.info('Found strongs file: %s', p)
+            return p
+    log.warning('strongs_greek.json not found near %s', data_dir)
+    return None
+
+
+def load_strongs(strongs_path):
+    """
+    Load strongs_greek.json → dict: str_number → gloss_string.
+    Keys are string integers ('1722'), values are slash-separated glosses ('in/on/among').
+    We also index by the 'G'-prefixed form ('G1722') for convenience.
+    """
+    log.info('Loading strongs from: %s', strongs_path)
+    with open(strongs_path, encoding='utf-8') as f:
+        raw = json.load(f)
+    # Build both 'G1722' and '1722' keys pointing to the same gloss
+    strongs = {}
+    for k, v in raw.items():
+        strongs[k]          = v   # '1722'  → 'in/on/among'
+        strongs[f'G{k}']    = v   # 'G1722' → 'in/on/among'
+        strongs[f'G{k.zfill(4)}'] = v  # 'G1722' padded form if needed
+    log.info('Strongs loaded: %d raw entries', len(raw))
+    return strongs
+
+
+def load_nt_data(data_dir, strongs):
     """
     Load all 27 book JSON files and return a dict:
         (surface_form, strongs_number) -> list_of_gloss_parts
 
-    Gloss parts are already split (no slashes).
+    Gloss source priority:
+      1. strongs_greek.json looked up by Strong's number (authoritative)
+      2. Baked-in 'gls' field in the book JSON (fallback)
+
+    Gloss parts are pre-split (no slashes in output).
     """
     log.info('Loading NT data from: %s', data_dir)
-    # (surface, strongs) -> set of individual gloss parts
     from collections import defaultdict
-    combo_glosses = defaultdict(set)
-    total_tokens  = 0
-    missing_books = []
+    combo_glosses  = defaultdict(set)
+    total_tokens   = 0
+    missing_books  = []
+    no_gloss_count = 0
 
     for book in BOOK_NAMES:
         path = os.path.join(data_dir, f'{book}.json')
@@ -217,11 +258,19 @@ def load_nt_data(data_dir):
         book_tokens = 0
         for verse_key, verse in book_data.items():
             for w in verse.get('words', []):
-                g   = (w.get('g') or '').strip()
-                S   = (w.get('S') or '').strip()
-                gls = (w.get('gls') or '').strip()
+                g = (w.get('g') or '').strip()
+                S = (w.get('S') or '').strip()
                 if not g:
                     continue
+
+                # Prefer strongs_greek.json lookup; fall back to baked-in gls
+                gls = (strongs.get(S) or '').strip() if strongs else ''
+                if not gls:
+                    gls = (w.get('gls') or '').strip()
+                if not gls:
+                    no_gloss_count += 1
+                    log.debug('  No gloss for %r (S=%r) in %s %s', g, S, book, verse_key)
+
                 for part in (_split_form(gls) if gls else []):
                     combo_glosses[(g, S)].add(part)
                 book_tokens += 1
@@ -232,6 +281,8 @@ def load_nt_data(data_dir):
 
     if missing_books:
         log.warning('Missing books: %s', missing_books)
+    if no_gloss_count:
+        log.warning('%d token(s) had no gloss from strongs or baked-in field', no_gloss_count)
 
     log.info('Total tokens: %d  Unique (surface, strongs) combos: %d',
              total_tokens, len(combo_glosses))
@@ -530,9 +581,23 @@ def Main(project, report, modifyAllowed):
     report.Info(f'Data directory: {data_dir}')
     log.info('Data directory: %s', data_dir)
 
+    # Load strongs_greek.json (primary gloss source)
+    strongs_path = _find_strongs_file(data_dir)
+    strongs = {}
+    if strongs_path:
+        try:
+            strongs = load_strongs(strongs_path)
+            report.Info(f'Strongs file: {strongs_path}')
+        except Exception:
+            log.warning('Failed to load strongs file — will use baked-in gls field',
+                        exc_info=True)
+            report.Warning('Could not load strongs_greek.json — falling back to gls field.')
+    else:
+        report.Warning('strongs_greek.json not found — falling back to baked-in gls field.')
+
     # Load all NT data
     try:
-        combo_glosses = load_nt_data(data_dir)
+        combo_glosses = load_nt_data(data_dir, strongs)
     except Exception:
         log.error('Failed to load NT data', exc_info=True)
         report.Error(f'Failed to load NT data. See log: {LOG_PATH}')
