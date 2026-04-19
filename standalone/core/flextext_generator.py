@@ -181,9 +181,13 @@ def generate_flextext(title: str, verses: list, guid_map: dict,
             tok_item.set('lang', lang_grc)
             tok_item.text = surface
 
-            # Gloss display hint (informational; FLEx uses the GUID link, not this text)
+            # For WfiAnalysis words (multiple glosses): omit gls so FLEx links to
+            # the WfiAnalysis itself → candidate/blue, user picks the sense in context.
+            # For WfiGloss words (single gloss): include gls → FLEx approves immediately.
+            # For unlinked words: include gls as a display hint only.
+            is_multi = entry and entry.get('type') == 'WfiAnalysis'
             gls_text = (entry.get('gls') or w.get('gls') or '') if entry else (w.get('gls') or '')
-            if gls_text:
+            if gls_text and not is_multi:
                 gls_item = ET.SubElement(word_el, 'item')
                 gls_item.set('type', 'gls')
                 gls_item.set('lang', lang_en)

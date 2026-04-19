@@ -467,11 +467,15 @@
         if (!w.g || !w.g.trim()) return;
         const entry = guidMap ? guidMap[nfc(w.g.trim())] : null;
         const guid  = entry ? entry.guid : uuidv4();
+        // For WfiAnalysis words (multiple glosses): omit gls so FLEx links to
+        // the WfiAnalysis → candidate/blue, user picks the sense in context.
+        // For WfiGloss words (single gloss): include gls → FLEx approves immediately.
+        const isMulti = entry && entry.type === 'WfiAnalysis';
         const glsTxt = entry ? (entry.gls || w.gls || '') : (w.gls || '');
 
         xml += `            <word guid="${guid}">\n`;
         xml += `              <item type="txt" lang="grc">${esc(w.g)}</item>\n`;
-        if (glsTxt) xml += `              <item type="gls" lang="en">${esc(glsTxt)}</item>\n`;
+        if (glsTxt && !isMulti) xml += `              <item type="gls" lang="en">${esc(glsTxt)}</item>\n`;
         xml += '            </word>\n';
       });
 
