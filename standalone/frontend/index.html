@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NT Greek FLEx Import Tool</title>
+  <style>
+    *{box-sizing:border-box}
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:860px;margin:0 auto;padding:20px 24px 40px;background:#f4f5f7;color:#222}
+    h1{color:#0b5ed7;margin:0 0 4px;font-size:1.35rem}
+    .subtitle{color:#555;font-size:.9rem;margin:0 0 16px}
+    .card{background:#fff;border:1px solid #dde;border-radius:8px;padding:18px 20px;margin:14px 0;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+    .card h2{margin:0 0 10px;font-size:1rem;color:#222}
+    label{display:block;font-weight:600;margin:10px 0 3px;font-size:.92rem}
+    select,input[type="text"]{padding:7px 9px;border:1px solid #bbb;border-radius:5px;font-size:.95rem}
+    select.wide,input.wide{width:100%;max-width:440px}
+    input.ws-input{width:90px}
+    .row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-top:10px}
+    .ws-row{display:flex;gap:16px;flex-wrap:wrap;margin-top:4px}
+    .ws-field{display:flex;flex-direction:column;gap:3px}
+    button{padding:8px 16px;border:0;border-radius:5px;cursor:pointer;font-size:.92rem;font-weight:600;transition:opacity .15s}
+    button:disabled{opacity:.45;cursor:default}
+    .btn-primary  {background:#0b5ed7;color:#fff}
+    .btn-primary:not(:disabled):hover{background:#084bb5}
+    .btn-success  {background:#198754;color:#fff}
+    .btn-success:not(:disabled):hover{background:#146c43}
+    .btn-secondary{background:#6c757d;color:#fff}
+    .btn-secondary:not(:disabled):hover{background:#565e64}
+    .btn-sm{padding:5px 11px;font-size:.85rem}
+    .btn-outline{background:#fff;border:1px solid #0b5ed7;color:#0b5ed7}
+    .btn-outline:hover{background:#eef3ff}
+    #preview{font-family:monospace;font-size:.82rem;white-space:pre-wrap;border:1px solid #b8cfff;background:#f0f5ff;border-radius:6px;padding:10px;max-height:200px;overflow-y:auto;margin-top:8px}
+    #status{margin-top:8px;font-size:.9rem;min-height:1.2em}
+    .status-ok   {color:#198754}
+    .status-err  {color:#dc3545}
+    .status-info {color:#555}
+    .project-row{display:flex;gap:8px;align-items:center;margin-top:4px;flex-wrap:wrap}
+    #projectPath{flex:1;min-width:0;font-size:.85rem;color:#444;background:#f8f8f8;border:1px solid #ccc;border-radius:5px;padding:5px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .info-box    {background:#e7f3ff;border:1px solid #9ec5fe;border-radius:6px;padding:10px 14px;font-size:.9rem;margin-top:10px}
+    .warning-box {background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:10px 14px;font-size:.9rem;display:none;margin-top:10px}
+    .warning-box.show{display:block}
+    .import-result{border-radius:6px;padding:10px 14px;font-size:.9rem;display:none;margin-top:10px}
+    .import-result.show{display:block}
+    .import-result.ok   {background:#d1e7dd;border:1px solid #a3cfbb}
+    .import-result.error{background:#f8d7da;border:1px solid #f5c2c7}
+    .log-footer{font-size:.78rem;color:#888;margin-top:12px}
+    .log-footer span{cursor:pointer;text-decoration:underline dotted}
+    .spinner{display:inline-block;width:14px;height:14px;border:2px solid #ccc;border-top-color:#0b5ed7;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    details summary{cursor:pointer;color:#0b5ed7;font-size:.9rem;padding:4px 0}
+    .muted{color:#666;font-size:.88rem}
+    hr{border:0;border-top:1px solid #eee;margin:12px 0}
+  </style>
+</head>
+<body>
+
+<h1>📖 NT Greek FLEx Import Tool</h1>
+<p class="subtitle">Import a New Testament Greek passage directly into FieldWorks Language Explorer.</p>
+
+<!-- ══ Template / first-time setup ════════════════════════════════════════ -->
+<div class="card">
+  <h2>New to FLEx or starting fresh?</h2>
+  <p class="muted" style="margin:0 0 8px">
+    A pre-configured NT Greek project template is included — it has the correct
+    Greek and English writing systems already set up so you can start right away.
+  </p>
+  <button id="btnSaveTemplate" class="btn-outline btn-sm">⬇ Save NT Greek project template…</button>
+  <details style="margin-top:10px">
+    <summary>How to restore the template in FLEx</summary>
+    <ol style="font-size:.88rem;line-height:1.8;margin:6px 0 0 0;padding-left:1.4rem;color:#444">
+      <li>Click <em>Save NT Greek project template…</em> above and choose where to save the <code>.fwbackup</code> file.</li>
+      <li><strong>Close this app.</strong></li>
+      <li>Open FLEx → <strong>File → Project Management → Restore a Project</strong>.</li>
+      <li>Select the <code>.fwbackup</code> file you just saved.</li>
+      <li>Close FLEx, then open this app again.</li>
+    </ol>
+  </details>
+  <div id="templateResult" style="display:none;margin-top:8px;font-size:.88rem;color:#198754"></div>
+</div>
+
+<!-- ══ Step 1: Passage ════════════════════════════════════════════════════ -->
+<div class="card">
+  <h2>Step 1 — Choose a passage</h2>
+  <label for="book">Book</label>
+  <select id="book" class="wide"></select>
+  <label for="ref">Reference
+    <span class="muted">(e.g. 1:1, 1:1-18, 1:1-2:10, 6)</span>
+  </label>
+  <input id="ref" type="text" class="wide" value="1:1-1:3" />
+  <div class="row">
+    <button id="btnLoad" class="btn-primary">Load passage</button>
+  </div>
+  <div id="status" class="status-info"></div>
+  <div id="preview">Awaiting data…</div>
+</div>
+
+<!-- ══ Step 2: Project + writing systems ══════════════════════════════════ -->
+<div class="card">
+  <h2>Step 2 — Select your FLEx project</h2>
+  <p class="muted" style="margin:0 0 8px">
+    FLEx must be <strong>closed</strong> before importing.
+  </p>
+
+  <div id="flexWarning" class="warning-box">
+    ⚠️ FieldWorks Language Explorer appears to be running.
+    Please close FLEx completely, then click <em>↺ Refresh</em>.
+  </div>
+
+  <label>Project file (.fwdata)</label>
+  <div class="project-row">
+    <div id="projectPath" title="">(no project selected)</div>
+    <button id="btnBrowse"      class="btn-secondary btn-sm">Browse…</button>
+    <button id="btnRefreshFlex" class="btn-secondary btn-sm" title="Re-check whether FLEx is running">↺ Refresh</button>
+  </div>
+
+  <div id="suggestedWrap" style="display:none;margin-top:8px">
+    <label style="font-weight:normal" class="muted">Detected projects:</label>
+    <div class="project-row">
+      <select id="suggestedProjects" class="wide"></select>
+      <button id="btnUseSuggested" class="btn-secondary btn-sm">Use this</button>
+    </div>
+  </div>
+
+  <hr/>
+
+  <!-- Writing system settings -->
+  <details>
+    <summary>Writing system settings (advanced)</summary>
+    <p class="muted" style="margin:6px 0 8px">
+      By default the tool uses your project's default vernacular and analysis
+      writing systems.  Override here if your project uses non-standard IDs
+      (e.g. a custom Greek variant).
+      Writing system IDs are shown in FLEx under
+      <em>Tools → Writing Systems</em>.
+    </p>
+    <div class="ws-row">
+      <div class="ws-field">
+        <label style="margin:0;font-size:.85rem">Greek (vernacular)</label>
+        <input id="wsGrc" type="text" class="ws-input" value="grc"
+               title="Writing system ID for the Greek base text" />
+      </div>
+      <div class="ws-field">
+        <label style="margin:0;font-size:.85rem">Gloss language</label>
+        <input id="wsEn" type="text" class="ws-input" value="en"
+               title="Writing system ID for word glosses" />
+      </div>
+      <div class="ws-field">
+        <label style="margin:0;font-size:.85rem">Free translation</label>
+        <input id="wsTrans" type="text" class="ws-input" value="en"
+               title="Writing system ID for free translations" />
+      </div>
+      <div style="display:flex;align-items:flex-end">
+        <button id="btnDetectWS" class="btn-secondary btn-sm"
+                title="Read writing system IDs from the selected project (requires FLEx to be closed)">
+          Detect from project
+        </button>
+      </div>
+    </div>
+    <div id="wsStatus" class="muted" style="margin-top:6px;min-height:1em"></div>
+  </details>
+</div>
+
+<!-- ══ Step 3: Import ════════════════════════════════════════════════════ -->
+<div class="card">
+  <h2>Step 3 — Import to FLEx</h2>
+  <p class="muted" style="margin:0 0 10px">
+    Imports the passage and splits slash-separated glosses
+    (e.g. <code>in/on/among</code>) into individual choices.
+    Words with multiple choices appear
+    <span style="color:#2255cc;font-weight:600">blue</span> in FLEx —
+    click each one to approve the correct gloss for context.
+  </p>
+  <button id="btnImport" class="btn-success" disabled>Import to FLEx</button>
+  <div id="importResult" class="import-result"></div>
+</div>
+
+<!-- ══ Log footer ════════════════════════════════════════════════════════ -->
+<div class="log-footer">
+  Log: <span id="logPath" title="Click to copy" onclick="copyLogPath()">loading…</span>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+// Constants
+// ═══════════════════════════════════════════════════════════════════════════
+const BOOKS = [
+  'Matthew','Mark','Luke','John','Acts','Romans',
+  '1Corinthians','2Corinthians','Galatians','Ephesians','Philippians',
+  'Colossians','1Thessalonians','2Thessalonians','1Timothy','2Timothy',
+  'Titus','Philemon','Hebrews','James','1Peter','2Peter',
+  '1John','2John','3John','Jude','Revelation'
+];
+
+// ═══════════════════════════════════════════════════════════════════════════
+// State
+// ═══════════════════════════════════════════════════════════════════════════
+const bookCache = {};
+let currentBook     = null;
+let currentPassage  = null;
+let currentVerses   = null;
+let selectedProject = null;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DOM refs
+// ═══════════════════════════════════════════════════════════════════════════
+const bookSel       = document.getElementById('book');
+const refInput      = document.getElementById('ref');
+const btnLoad       = document.getElementById('btnLoad');
+const statusEl      = document.getElementById('status');
+const previewEl     = document.getElementById('preview');
+const flexWarnEl    = document.getElementById('flexWarning');
+const projectPathEl = document.getElementById('projectPath');
+const btnBrowse     = document.getElementById('btnBrowse');
+const btnRefresh    = document.getElementById('btnRefreshFlex');
+const suggestedWrap = document.getElementById('suggestedWrap');
+const suggestedSel  = document.getElementById('suggestedProjects');
+const btnUseSugg    = document.getElementById('btnUseSuggested');
+const wsGrcEl       = document.getElementById('wsGrc');
+const wsEnEl        = document.getElementById('wsEn');
+const wsTransEl     = document.getElementById('wsTrans');
+const btnDetectWS   = document.getElementById('btnDetectWS');
+const wsStatusEl    = document.getElementById('wsStatus');
+const btnImport     = document.getElementById('btnImport');
+const importResultEl= document.getElementById('importResult');
+const logPathEl     = document.getElementById('logPath');
+const btnSaveTempl  = document.getElementById('btnSaveTemplate');
+const templResultEl = document.getElementById('templateResult');
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Python bridge helpers
+// ═══════════════════════════════════════════════════════════════════════════
+function pyapi() { return window.pywebview && window.pywebview.api; }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Status helpers
+// ═══════════════════════════════════════════════════════════════════════════
+function setStatus(msg, type='info') {
+  statusEl.textContent = msg;
+  statusEl.className = `status-${type}`;
+}
+
+function spinner(label) {
+  return `<span class="spinner"></span>${label}`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Passage parsing — identical to docs/index.html
+// ═══════════════════════════════════════════════════════════════════════════
+function parseRange(ref) {
+  const s = (ref || '').trim();
+  let m;
+  m = s.match(/^(\d+):(\d+)\s*-\s*(\d+):(\d+)$/);
+  if (m) {
+    const start = {c:+m[1],v:+m[2]}, end = {c:+m[3],v:+m[4]};
+    if (end.c < start.c || (end.c===start.c && end.v < start.v))
+      throw new Error('End before start.');
+    return {start,end};
+  }
+  m = s.match(/^(\d+):(\d+)\s*-\s*(\d+)$/);
+  if (m) { const c=+m[1],sv=+m[2],ev=+m[3]; if(ev<sv) throw new Error('End before start.'); return {start:{c,v:sv},end:{c,v:ev}}; }
+  m = s.match(/^(\d+)\s*-\s*(\d+)\s*-\s*(\d+)$/);
+  if (m) { const c=+m[1],sv=+m[2],ev=+m[3]; if(ev<sv) throw new Error('End before start.'); return {start:{c,v:sv},end:{c,v:ev}}; }
+  m = s.match(/^(\d+):(\d+)$/);
+  if (m) { const c=+m[1],v=+m[2]; return {start:{c,v},end:{c,v}}; }
+  m = s.match(/^(\d+)\s*-\s*(\d+)$/);
+  if (m) { const sc=+m[1],ec=+m[2]; if(ec<sc) throw new Error('End before start.'); return {start:{c:sc,v:1},end:{c:ec,v:999}}; }
+  m = s.match(/^(\d+)$/);
+  if (m) { const c=+m[1]; return {start:{c,v:1},end:{c,v:999}}; }
+  throw new Error('Invalid reference. Try: 28, 27-28, 28:19, 28-19-20, 28:19-29:3');
+}
+
+async function ensureBookLoaded(book) {
+  if (!book) throw new Error('No book selected.');
+  if (bookCache[book]) return;
+  const path = `assets/data/${encodeURIComponent(book)}.json`;
+  const res  = await fetch(path);
+  if (!res.ok) throw new Error(`Book data not found for ${book} (${res.status})`);
+  bookCache[book] = await res.json();
+}
+
+function sliceVerses(bookData, passage) {
+  const verses = [];
+  for (let c = passage.start.c; c <= passage.end.c; c++) {
+    const vStart = (c === passage.start.c) ? passage.start.v : 1;
+    const vEnd   = (c === passage.end.c)   ? passage.end.v   : 999;
+    for (let v = vStart; v <= vEnd; v++) {
+      const key   = `${c}:${v}`;
+      const verse = bookData[key];
+      if (verse) verses.push({ ref: `${passage.book} ${key}`, ...verse, c, v });
+    }
+  }
+  if (!verses.length) throw new Error('No verses found for that range.');
+  return verses;
+}
+
+function renderPreview(passage, verses) {
+  let out = `${passage.book} ${passage.start.c}:${passage.start.v}`;
+  if (passage.end.c !== passage.start.c || passage.end.v !== passage.start.v)
+    out += `-${passage.end.c}:${passage.end.v}`;
+  out += `  (${verses.length} verse${verses.length===1?'':'s'})\n\n`;
+  verses.slice(0, 4).forEach(v => {
+    out += `${v.ref}  ${(v.translation||'').slice(0,60)}\n`;
+    (v.words||[]).slice(0, 6).forEach(w => {
+      out += `  ${w.g||''}  ${w.S||''}  ${w.gls||''}\n`;
+    });
+  });
+  if (verses.length > 4) out += `  … and ${verses.length - 4} more verse(s)\n`;
+  previewEl.textContent = out;
+}
+
+function passageTitle(passage) {
+  let t = `${passage.book} ${passage.start.c}:${passage.start.v}`;
+  if (passage.end.c !== passage.start.c || passage.end.v !== passage.start.v)
+    t += `-${passage.end.c}:${passage.end.v}`;
+  return t;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// FLEx running check
+// ═══════════════════════════════════════════════════════════════════════════
+async function checkFlexRunning() {
+  const api = pyapi();
+  if (!api) return;
+  try {
+    const running = await api.is_flex_running();
+    flexWarnEl.classList.toggle('show', !!running);
+  } catch(e) { console.error('is_flex_running:', e); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Import button state
+// ═══════════════════════════════════════════════════════════════════════════
+function updateImportBtn() {
+  btnImport.disabled = !(currentVerses && currentVerses.length && selectedProject);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Event handlers
+// ═══════════════════════════════════════════════════════════════════════════
+bookSel.addEventListener('change', async () => {
+  currentBook = bookSel.value;
+  currentPassage = currentVerses = null;
+  updateImportBtn();
+  previewEl.textContent = 'Awaiting data…';
+  setStatus(`Loading ${currentBook}…`);
+  try {
+    await ensureBookLoaded(currentBook);
+    setStatus(`${currentBook} loaded.`);
+  } catch(e) { setStatus('Error: '+e.message, 'err'); }
+});
+
+btnLoad.addEventListener('click', async () => {
+  setStatus('Loading…');
+  try {
+    const range = parseRange(refInput.value.trim());
+    await ensureBookLoaded(currentBook);
+    const passage = {book: currentBook, ...range};
+    const verses  = sliceVerses(bookCache[currentBook], passage);
+    currentPassage = passage;
+    currentVerses  = verses;
+    renderPreview(passage, verses);
+    setStatus(`Loaded ${verses.length} verse(s).`, 'ok');
+    updateImportBtn();
+  } catch(e) {
+    setStatus('Error: '+e.message, 'err');
+    previewEl.textContent = '—';
+    currentVerses = null;
+    updateImportBtn();
+  }
+});
+
+btnBrowse.addEventListener('click', async () => {
+  const api = pyapi();
+  if (!api) { alert('Python bridge not available.'); return; }
+  try {
+    const path = await api.select_project();
+    if (path) { setProject(path); checkFlexRunning(); }
+  } catch(e) { console.error('select_project:', e); }
+});
+
+btnRefresh.addEventListener('click', () => checkFlexRunning());
+
+btnUseSugg.addEventListener('click', () => {
+  const path = suggestedSel.value;
+  if (path) { setProject(path); checkFlexRunning(); }
+});
+
+function setProject(path) {
+  selectedProject           = path;
+  projectPathEl.textContent = path;
+  projectPathEl.title       = path;
+  updateImportBtn();
+  wsStatusEl.textContent = '';
+}
+
+// Writing system detection
+btnDetectWS.addEventListener('click', async () => {
+  if (!selectedProject) { wsStatusEl.textContent = 'Select a project first.'; return; }
+  const api = pyapi();
+  if (!api) return;
+  btnDetectWS.disabled = true;
+  wsStatusEl.textContent = 'Reading project writing systems…';
+  try {
+    const result = await api.get_writing_systems(selectedProject);
+    if (result.error) {
+      wsStatusEl.textContent = 'Error: ' + result.error;
+    } else {
+      if (result.vernacular) wsGrcEl.value  = result.vernacular;
+      if (result.analysis)   wsEnEl.value   = result.analysis;
+      if (result.analysis)   wsTransEl.value= result.analysis;
+      wsStatusEl.textContent =
+        `Detected: vernacular="${result.vernacular}"  analysis="${result.analysis}"`;
+    }
+  } catch(e) {
+    wsStatusEl.textContent = 'Detection failed: '+e;
+  } finally {
+    btnDetectWS.disabled = false;
+  }
+});
+
+// Template save
+btnSaveTempl.addEventListener('click', async () => {
+  const api = pyapi();
+  if (!api) { alert('Python bridge not available.'); return; }
+  try {
+    const result = await api.save_template();
+    if (result && result.ok) {
+      templResultEl.textContent = '✅ Template saved to: ' + result.path;
+      templResultEl.style.display = '';
+    } else if (result && !result.ok) {
+      templResultEl.textContent = '❌ ' + (result.error || 'Cancelled.');
+      templResultEl.style.display = '';
+      templResultEl.style.color = '#dc3545';
+    }
+  } catch(e) { console.error('save_template:', e); }
+});
+
+// Import
+btnImport.addEventListener('click', async () => {
+  if (!currentVerses || !selectedProject) return;
+  const api = pyapi();
+  if (!api) { alert('Python bridge not available.'); return; }
+
+  let flexRunning = false;
+  try { flexRunning = await api.is_flex_running(); } catch(_) {}
+  if (flexRunning) {
+    showImportResult(false, 'Please close FLEx before importing.');
+    return;
+  }
+
+  const title   = passageTitle(currentPassage);
+  const wsGrc   = wsGrcEl.value.trim()   || 'grc';
+  const wsEn    = wsEnEl.value.trim()    || 'en';
+  const wsTrans = wsTransEl.value.trim() || 'en';
+
+  btnImport.disabled  = true;
+  btnImport.innerHTML = spinner('Importing…');
+  importResultEl.className = 'import-result';
+
+  try {
+    const result = await api.import_to_flex(
+      selectedProject,
+      title,
+      JSON.stringify(currentVerses),
+      wsGrc, wsEn, wsTrans
+    );
+    showImportResult(result.ok, result.message || (result.ok ? 'Done.' : 'Unknown error.'));
+  } catch(e) {
+    showImportResult(false, 'Unexpected error: '+e);
+  } finally {
+    btnImport.disabled  = false;
+    btnImport.textContent = 'Import to FLEx';
+  }
+});
+
+function showImportResult(ok, message) {
+  importResultEl.textContent = (ok ? '✅ ' : '❌ ') + message;
+  importResultEl.className = 'import-result show ' + (ok ? 'ok' : 'error');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Initialisation
+// ═══════════════════════════════════════════════════════════════════════════
+async function init() {
+  BOOKS.forEach(b => {
+    const opt = document.createElement('option');
+    opt.value = b; opt.textContent = b;
+    bookSel.appendChild(opt);
+  });
+  currentBook   = 'Acts';
+  bookSel.value = currentBook;
+
+  setStatus('Loading Acts…');
+  try {
+    await ensureBookLoaded(currentBook);
+    setStatus('Acts loaded. Enter a reference and click Load passage.');
+  } catch(e) { setStatus('Error: '+e.message, 'err'); }
+
+  // Wait for pywebview bridge (injected asynchronously after window loads)
+  let tries = 0;
+  const poll = setInterval(async () => {
+    if (window.pywebview && window.pywebview.api) {
+      clearInterval(poll);
+      await onBridgeReady();
+    } else if (++tries > 50) {
+      clearInterval(poll);
+      console.warn('pywebview bridge not available');
+    }
+  }, 100);
+}
+
+async function onBridgeReady() {
+  const api = pyapi();
+
+  // Log path
+  try { const lp = await api.get_log_path(); logPathEl.textContent = lp; } catch(_) {}
+
+  // FLEx check
+  await checkFlexRunning();
+
+  // Suggest found projects
+  try {
+    const projects = await api.find_flex_projects();
+    if (projects && projects.length) {
+      suggestedWrap.style.display = '';
+      projects.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p;
+        const parts = p.replace(/\\/g,'/').split('/');
+        opt.textContent = parts.slice(-2).join('/');
+        opt.title = p;
+        suggestedSel.appendChild(opt);
+      });
+    }
+  } catch(_) {}
+}
+
+function copyLogPath() {
+  const txt = logPathEl.textContent;
+  if (txt && navigator.clipboard) navigator.clipboard.writeText(txt).catch(()=>{});
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// The flextext XML builder — kept for reference / debugging only.
+// NOT called during normal operation; import goes direct to LCM.
+// ═══════════════════════════════════════════════════════════════════════════
+/*
+function buildFlexText(passage, verses) {
+  // Identical to docs/index.html buildFlexText().
+  // Useful for manually verifying the expected FLEx XML structure.
+  // To debug: call this, console.log the result, compare to a real FLEx import.
+  // ... (see docs/index.html for full implementation)
+}
+*/
+
+init();
+</script>
+</body>
+</html>
