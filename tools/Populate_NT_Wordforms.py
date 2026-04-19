@@ -99,6 +99,7 @@ try:
         IWfiWordformFactory,
         IWfiAnalysisFactory,
         IWfiGlossFactory,
+        WfiGlossTags,
     )
     from SIL.LCModel.Core.Text import TsStringUtils
     log.info('SIL.LCModel imports OK')
@@ -448,6 +449,13 @@ def _populate(combo_glosses, cache, lp, ws_en, ws_grc, report):
     ana_factory = cache.ServiceLocator.GetService(IWfiAnalysisFactory)
     gls_factory = cache.ServiceLocator.GetService(IWfiGlossFactory)
 
+    # Field ID for WfiGloss.Form — used with SetMultiStringAlt to bypass
+    # the property accessor, which does not reliably persist text for
+    # newly created objects within the same undo task.
+    form_flid = WfiGlossTags.kflidForm
+    log.info('WfiGloss Form flid: %s', form_flid)
+    sda = cache.DomainDataByFlid   # ISilDataAccess
+
     existing_wf  = _build_existing_wf_cache(cache, ws_grc)
     n_wf         = 0
     n_ana        = 0
@@ -528,14 +536,25 @@ def _populate(combo_glosses, cache, lp, ws_en, ws_grc, report):
             log.debug('    created WfiAnalysis hvo=%s  strongs=%s  parts=%s',
                       ana.Hvo, strongs, parts)
 
-            # Create WfiGloss for each part
+            # Create WfiGloss for each part.
+            # Use SetMultiStringAlt on the raw data accessor rather than
+            # gls.Form.set_String() — the property accessor does not reliably
+            # persist text for objects created within the same undo task.
             for part in parts:
                 tss = TsStringUtils.MakeString(part, ws_en)
                 gls = gls_factory.Create()
                 ana.MeaningsOC.Add(gls)
-                gls.Form.set_String(ws_en, tss)
+                sda.SetMultiStringAlt(gls.Hvo, form_flid, ws_en, tss)
                 n_gls += 1
                 log.debug('      WfiGloss hvo=%s  %r', gls.Hvo, part)
+
+                # Verify the first gloss we create actually has text
+                if n_gls == 1:
+                    check = sda.get_MultiStringAlt(gls.Hvo, form_flid, ws_en)
+                    txt = check.Text if check else None
+                    log.info('First gloss verification: hvo=%s  stored=%r', gls.Hvo, txt)
+                    report.Info(f'First gloss check: "{txt}" '
+                                f'({"OK" if txt else "BLANK — SetMultiStringAlt failed"})')
 
     log.info('Population complete: wf_created=%d  ana_created=%d  gls_created=%d  skipped=%d',
              n_wf, n_ana, n_gls, n_skipped)
