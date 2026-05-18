@@ -93,4 +93,4 @@ package.json
 
 # Local-only dev server scripts (do not commit)
 tools/dev-server.local.js
-tools/dev-server.js
+tools/dev-server.js.claude/
